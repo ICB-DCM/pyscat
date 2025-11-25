@@ -1,0 +1,66 @@
+name: CI
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * 0'
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14']
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Prepare python ${{ matrix.python-version }}
+        uses: actions/setup-python@v6
+        with:
+            python-version: ${{ matrix.python-version }}
+
+      - name: Install apt dependencies
+        run: |
+            sudo apt-get update
+            sudo apt-get install \
+              build-essential \
+              coinor-libipopt1v5 coinor-libipopt-dev \
+              gfortran lcov pkg-config python3-dev zlib1g-dev
+              if [ ! -f /usr/lib/x86_64-linux-gnu/liblapack.so ]; then
+                sudo ln -s /usr/lib/x86_64-linux-gnu/liblapack.so.3 /usr/lib/x86_64-linux-gnu/liblapack.so
+              fi
+              if [ ! -f /usr/lib/x86_64-linux-gnu/libblas.so ]; then
+                sudo ln -s /usr/lib/x86_64-linux-gnu/libblas.so.3 /usr/lib/x86_64-linux-gnu/libblas.so
+              fi
+
+
+      - name: Install dependencies
+        run: |
+            python -m pip install --upgrade pip
+            python -m pip install --upgrade setuptools
+            python -m pip install -e .[test]
+
+      - name: Run tests
+        run: |
+            pytest
+
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Prepare python
+        uses: actions/setup-python@v6
+        with:
+            python-version: 3.13
+
+      - name: Install pre-commit
+        run: |
+            python -m pip install --upgrade pip
+            python -m pip install pre-commit
+
+      - name: Run pre-commit hooks
+        run: |
+            pre-commit run --all-files

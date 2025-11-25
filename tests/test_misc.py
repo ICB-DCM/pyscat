@@ -107,6 +107,7 @@ def test_ess_multiprocess(problem):
             ),
         ]
     )
+    problem.startpoint_method = pypesto.startpoint.UniformStartpoints()
 
     ess = ESSOptimizer(
         max_iter=20,
@@ -119,7 +120,6 @@ def test_ess_multiprocess(problem):
         dim=10,
         evaluator=FunctionEvaluatorMP(
             problem=problem,
-            startpoint_method=pypesto.startpoint.UniformStartpoints(),
             n_procs=4,
         ),
     )

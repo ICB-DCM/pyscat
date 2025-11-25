@@ -6,7 +6,6 @@ from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 from typing import Optional
-from warnings import warn
 
 import numpy as np
 
@@ -38,27 +37,13 @@ class FunctionEvaluator:
     def __init__(
         self,
         problem: Problem,
-        startpoint_method: StartpointMethod = None,
     ):
         """Construct.
 
         :param problem: The problem
-        :param startpoint_method:
-            Method for choosing feasible parameters
-            **Deprecated. Use ``problem.startpoint_method`` instead.**
         """
-        if startpoint_method is not None:
-            warn(
-                "Passing `startpoint_method` directly is deprecated, "
-                "use `problem.startpoint_method` instead.",
-                DeprecationWarning,
-                stacklevel=1,
-            )
-
         self.problem: Problem = problem
-        self.startpoint_method: StartpointMethod = (
-            startpoint_method or problem.startpoint_method
-        )
+        self.startpoint_method: StartpointMethod = problem.startpoint_method
         self.n_eval: int = 0
         self.n_eval_round: int = 0
 
@@ -140,19 +125,17 @@ class FunctionEvaluatorMT(FunctionEvaluator):
     def __init__(
         self,
         problem: Problem,
-        startpoint_method: StartpointMethod,
         n_threads: int,
     ):
         """Construct.
 
         :param problem: The problem
-        :param startpoint_method: Method for choosing feasible parameters
         :param n_threads: Maximum number of threads to use for parallel
             objective function evaluations.
             Requires the objective to be copy-able,
             and that copies are thread-safe.
         """
-        super().__init__(problem=problem, startpoint_method=startpoint_method)
+        super().__init__(problem=problem)
 
         # Number of threads for parallel objective evaluation
         self._n_threads: int = n_threads
@@ -223,10 +206,9 @@ class FunctionEvaluatorMP(FunctionEvaluator):
     def __init__(
         self,
         problem: Problem,
-        startpoint_method: StartpointMethod,
         n_procs: int,
     ):
-        super().__init__(problem=problem, startpoint_method=startpoint_method)
+        super().__init__(problem=problem)
         self._pool = multiprocessing.Pool(
             n_procs,
             # initializer=self._initialize_worker,
@@ -252,7 +234,6 @@ class FunctionEvaluatorMP(FunctionEvaluator):
 
 def create_function_evaluator(
     problem: Problem = None,
-    startpoint_method: StartpointMethod = None,
     n_procs: int = None,
     n_threads: int = None,
 ):
@@ -269,12 +250,10 @@ def create_function_evaluator(
     if n_procs:
         return FunctionEvaluatorMP(
             problem=problem,
-            startpoint_method=startpoint_method,
             n_procs=n_procs,
         )
 
     return FunctionEvaluatorMT(
         problem=problem,
-        startpoint_method=startpoint_method,
         n_threads=n_threads or 1,
     )

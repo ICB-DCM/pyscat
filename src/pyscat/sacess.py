@@ -23,12 +23,12 @@ import numpy as np
 import pypesto
 
 from pypesto.history import MemoryHistory
-from pypesto.startpoint import StartpointMethod
 from pypesto.store.read_from_hdf5 import read_result
 from pypesto.store.save_to_hdf5 import (
     OptimizationResultHDF5Writer,
     ProblemHDF5Writer,
 )
+import pypesto.optimize
 from pypesto.problem import Problem
 from .ess import ESSExitFlag, ESSOptimizer
 from .function_evaluator import create_function_evaluator
@@ -202,7 +202,6 @@ class SacessOptimizer:
     def minimize(
         self,
         problem: Problem,
-        startpoint_method: StartpointMethod = None,
     ) -> pypesto.Result:
         """Solve the given optimization problem.
 
@@ -220,10 +219,6 @@ class SacessOptimizer:
             with ``check_fval=True`` or ``check_grad=True`` is not recommended
             since it would create significant overhead.
 
-        :param startpoint_method:
-            Method for choosing starting points.
-            **Deprecated. Use ``problem.startpoint_method`` instead.**
-
         :return:
             Result object with optimized parameters in
             :attr:`pypesto.Result.optimize_result`.
@@ -231,14 +226,6 @@ class SacessOptimizer:
             included. Additional results may be included - this is subject to
             change.
         """
-        if startpoint_method is not None:
-            warn(
-                "Passing `startpoint_method` directly is deprecated, "
-                "use `problem.startpoint_method` instead.",
-                DeprecationWarning,
-                stacklevel=1,
-            )
-
         start_time = time.time()
         logger.debug(
             f"Running {self.__class__.__name__} with {self.num_workers} "
@@ -289,7 +276,6 @@ class SacessOptimizer:
                     args=(
                         worker,
                         problem,
-                        startpoint_method,
                         logging_thread.queue,
                     ),
                 )
@@ -615,7 +601,6 @@ class SacessWorker:
     def run(
         self,
         problem: Problem,
-        startpoint_method: StartpointMethod,
     ):
         self._start_time = time.time()
 
@@ -633,7 +618,6 @@ class SacessWorker:
 
         evaluator = create_function_evaluator(
             problem,
-            startpoint_method,
             n_procs=self._ess_kwargs.get("n_procs"),
             n_threads=self._ess_kwargs.get("n_threads"),
         )
@@ -647,7 +631,7 @@ class SacessWorker:
             )
         )
 
-        ess = self._setup_ess(startpoint_method)
+        ess = self._setup_ess()
 
         # run ESS until exit criteria are met, but start at least one iteration
         while self._keep_going(ess) or ess.n_iter == 0:
@@ -711,7 +695,7 @@ class SacessWorker:
 
         self._logger.debug(f"Final configuration: {self._ess_kwargs}")
 
-    def _setup_ess(self, startpoint_method: StartpointMethod) -> ESSOptimizer:
+    def _setup_ess(self) -> ESSOptimizer:
         """Run ESS."""
         ess_kwargs = self._ess_kwargs.copy()
         # account for sacess walltime limit
@@ -724,9 +708,7 @@ class SacessWorker:
         ess.logger = self._logger.getChild(f"sacess-{self._worker_idx:02d}-ess")
         ess.logger.setLevel(self._ess_loglevel)
 
-        ess._initialize_minimize(
-            startpoint_method=startpoint_method, refset=self._refset
-        )
+        ess._initialize_minimize(refset=self._refset)
 
         return ess
 
@@ -917,7 +899,6 @@ class SacessWorker:
 def _run_worker(
     worker: SacessWorker,
     problem: Problem,
-    startpoint_method: StartpointMethod,
     log_process_queue: multiprocessing.Queue,
 ):
     """Run the given SACESS worker.
@@ -933,7 +914,7 @@ def _run_worker(
         worker._logger = logging.getLogger(multiprocessing.current_process().name)
         worker._logger.addHandler(h)
 
-        return worker.run(problem=problem, startpoint_method=startpoint_method)
+        return worker.run(problem=problem)
     except Exception as e:
         with suppress(Exception):
             worker._logger.exception(f"Worker {worker._worker_idx} failed: {e}")

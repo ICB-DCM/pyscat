@@ -10,14 +10,12 @@ import enum
 import logging
 import time
 from typing import Protocol
-from warnings import warn
 
 import numpy as np
 
 import pypesto.optimize
 from pypesto import OptimizerResult, Problem
 from pypesto.history import MemoryHistory
-from pypesto.startpoint import StartpointMethod
 
 from .function_evaluator import FunctionEvaluator, create_function_evaluator
 from .refset import RefSet
@@ -256,21 +254,12 @@ class ESSOptimizer:
     def _initialize_minimize(
         self,
         problem: Problem = None,
-        startpoint_method: StartpointMethod = None,
         refset: RefSet | None = None,
     ):
         """Initialize for optimizations.
 
         Create initial refset, start timer, ... .
         """
-        if startpoint_method is not None:
-            warn(
-                "Passing `startpoint_method` directly is deprecated, "
-                "use `problem.startpoint_method` instead.",
-                DeprecationWarning,
-                stacklevel=1,
-            )
-
         self._initialize()
         self.starttime = time.time()
 
@@ -287,7 +276,6 @@ class ESSOptimizer:
             self.n_diverse = self.n_diverse or 10 * problem.dim
             self.evaluator = create_function_evaluator(
                 problem,
-                startpoint_method,
                 n_threads=self.n_threads,
                 n_procs=self.n_procs,
             )
@@ -307,22 +295,16 @@ class ESSOptimizer:
     def minimize(
         self,
         problem: Problem = None,
-        startpoint_method: StartpointMethod = None,
         refset: RefSet | None = None,
     ) -> pypesto.Result:
         """Minimize the given objective.
 
         :param problem:
             Problem to run ESS on.
-        :param startpoint_method:
-            Method for choosing starting points.
-            **Deprecated. Use ``problem.startpoint_method`` instead.**
         :param refset:
             The initial RefSet or ``None`` to auto-generate.
         """
-        self._initialize_minimize(
-            problem=problem, startpoint_method=startpoint_method, refset=refset
-        )
+        self._initialize_minimize(problem=problem, refset=refset)
 
         # [PenasGon2017]_ Algorithm 1
         while self._keep_going():

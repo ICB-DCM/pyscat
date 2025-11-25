@@ -6,6 +6,8 @@ import numpy as np
 
 from .function_evaluator import FunctionEvaluator
 
+__all__ = ["RefSet"]
+
 
 class RefSet:
     """Scatter search reference set.

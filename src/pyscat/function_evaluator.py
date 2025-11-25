@@ -13,6 +13,13 @@ import numpy as np
 from pypesto import Problem
 from pypesto.startpoint import StartpointMethod
 
+__all__ = [
+    "FunctionEvaluator",
+    "FunctionEvaluatorMT",
+    "FunctionEvaluatorMP",
+    "create_function_evaluator",
+]
+
 
 class FunctionEvaluator:
     """Wrapper for optimization problem and startpoint method.

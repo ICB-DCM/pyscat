@@ -1304,7 +1304,8 @@ class SacessWorkerResult:
 class SacessOptions:
     """Container for :class:`SacessOptimizer` hyperparameters.
 
-    :param manager_initial_rejection_threshold, manager_minimum_rejection_threshold:
+    :param manager_initial_rejection_threshold:
+    :param manager_minimum_rejection_threshold:
         Initial and minimum threshold for relative objective improvements that
         incoming solutions have to pass to be accepted. If the number of
         rejected solutions exceeds the number of workers, the threshold is
@@ -1314,7 +1315,9 @@ class SacessOptions:
         Minimum relative improvement of the objective compared to the best
         known value to be eligible for submission to the Manager.
 
-    :param adaptation_min_evals, adaptation_sent_offset, adaptation_sent_coeff:
+    :param adaptation_min_evals:
+    :param adaptation_sent_offset:
+    :param adaptation_sent_coeff:
         Hyperparameters that control when the workers will adapt their settings
         based on the performance of the other workers.
 

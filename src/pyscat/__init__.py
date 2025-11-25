@@ -3,12 +3,6 @@ PyScat Package
 """
 
 from .ess import ESSExitFlag, ESSOptimizer
-from .function_evaluator import (
-    FunctionEvaluator,
-    FunctionEvaluatorMP,
-    FunctionEvaluatorMT,
-)
-from .refset import RefSet
 from .sacess import (
     SacessCmaFactory,
     SacessFidesFactory,
@@ -21,10 +15,6 @@ from .sacess import (
 __all__ = [
     "ESSExitFlag",
     "ESSOptimizer",
-    "FunctionEvaluator",
-    "FunctionEvaluatorMP",
-    "FunctionEvaluatorMT",
-    "RefSet",
     "SacessCmaFactory",
     "SacessFidesFactory",
     "SacessIpoptFactory",

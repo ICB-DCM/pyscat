@@ -7,9 +7,9 @@ from pyscat import (
     ESSExitFlag,
     SacessOptimizer,
     SacessOptions,
-    FunctionEvaluatorMP,
-    RefSet,
 )
+from pyscat.function_evaluator import FunctionEvaluatorMP
+from pyscat.refset import RefSet
 import logging
 from pypesto.optimize import FidesOptimizer
 import pytest

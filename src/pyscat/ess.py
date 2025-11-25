@@ -52,11 +52,9 @@ class OptimizerFactory(Protocol):
     ) -> pypesto.optimize.Optimizer:
         """Create a new optimizer instance.
 
-        Parameters
-        ----------
-        max_eval:
+        :param max_eval:
             Maximum number of objective functions allowed.
-        max_walltime_s:
+        :param max_walltime_s:
             Maximum walltime in seconds.
         """
         ...
@@ -140,41 +138,40 @@ class ESSOptimizer:
     ):
         r"""Construct new ESS instance.
 
-        For plausible values of hyperparameters, see :footcite:t:`VillaverdeEge2012`.
+        For plausible values of hyperparameters,
+        see :footcite:t:`VillaverdeEge2012`.
 
-        Parameters
-        ----------
-        dim_refset:
+        :param dim_refset:
             Size of the ReferenceSet. Note that in every iteration at least
             ``dim_refset**2 - dim_refset`` function evaluations will occur.
-        max_iter:
+        :param max_iter:
             Maximum number of ESS iterations.
-        local_n1:
+        :param local_n1:
             Minimum number of iterations before first local search.
             Ignored if ``local_optimizer=None``.
-        local_n2:
+        :param local_n2:
             Minimum number of iterations between consecutive local
             searches. Maximally one local search per performed in each
             iteration. Ignored if ``local_optimizer=None``.
-        local_optimizer:
+        :param local_optimizer:
             Local optimizer for refinement, or a callable that creates an
             :class:`pypesto.optimize.Optimizer` or ``None`` to skip local searches.
             In case of a callable, it will be called with the keyword arguments
             `max_walltime_s` and `max_eval`, which should be passed to the optimizer
             (if supported) to honor the overall budget.
             See :class:`SacessFidesFactory` for an example.
-        n_diverse:
+        :param n_diverse:
             Number of samples to choose from to construct the initial RefSet
-        max_eval:
+        :param max_eval:
             Maximum number of objective functions allowed. This criterion is
             only checked once per iteration, not after every objective
             evaluation, so the actual number of function evaluations may exceed
             this value.
-        max_walltime_s:
+        :param max_walltime_s:
             Maximum walltime in seconds. Will only be checked between local
             optimizations and other simulations, and thus, may be exceeded by
             the duration of a local search.
-        balance:
+        :param balance:
             Quality vs. diversity balancing factor with
             :math:`0 \leq balance \leq 1`; ``0`` = only quality,
             ``1`` = only diversity.
@@ -183,16 +180,16 @@ class ESSOptimizer:
             solutions found so far (quality), or on exploring new regions of
             the parameter space (diversity).
             Ignored if ``local_optimizer=None``.
-        n_procs:
+        :param n_procs:
             Number of parallel processes to use for parallel function
             evaluation. Mutually exclusive with `n_threads`.
-        n_threads:
+        :param n_threads:
             Number of parallel threads to use for parallel function evaluation.
             Mutually exclusive with `n_procs`.
-        history:
+        :param history:
             History of the best values/parameters found so far.
             (Monotonously decreasing objective values.)
-        result_includes_refset:
+        :param result_includes_refset:
             Whether the :meth:`minimize` result should include the final
             RefSet, or just the local search results and the overall best
             parameters.
@@ -315,14 +312,12 @@ class ESSOptimizer:
     ) -> pypesto.Result:
         """Minimize the given objective.
 
-        Parameters
-        ----------
-        problem:
+        :param problem:
             Problem to run ESS on.
-        startpoint_method:
+        :param startpoint_method:
             Method for choosing starting points.
             **Deprecated. Use ``problem.startpoint_method`` instead.**
-        refset:
+        :param refset:
             The initial RefSet or ``None`` to auto-generate.
         """
         self._initialize_minimize(
@@ -420,9 +415,8 @@ class ESSOptimizer:
     def _keep_going(self) -> bool:
         """Check exit criteria.
 
-        Returns
-        -------
-        ``True`` if not of the exit criteria is met, ``False`` otherwise.
+        :returns: ``True`` if not of the exit criteria is met,
+            ``False`` otherwise.
         """
         # TODO DW which further stopping criteria: gtol, fatol, frtol?
 
@@ -459,13 +453,12 @@ class ESSOptimizer:
         of all RefSet members. Creates ``RefSet.dim ** 2 - RefSet.dim`` new
         parameter vectors, tests them, and keeps the best child of each parent.
 
-        Returns
-        -------
-        y:
-            The next generation of parameter vectors
-            (`dim_refset` x `dim_problem`).
-        fy:
-            The objective values corresponding to the parameters in `y`.
+        :returns:
+            * y:
+                The next generation of parameter vectors
+                (`dim_refset` x `dim_problem`).
+            * fy:
+                The objective values corresponding to the parameters in `y`.
         """
         y = np.zeros(shape=(self.refset.dim, self.evaluator.problem.dim))
         fy = np.full(shape=self.refset.dim, fill_value=np.inf)
@@ -492,16 +485,12 @@ class ESSOptimizer:
 
         See [EgeaBal2009]_ Section 3.2 for details.
 
-        Parameters
-        ----------
-        i:
+        :param i:
             Index of first RefSet member for recombination
-        j:
+        :param j:
             Index of second RefSet member for recombination
 
-        Returns
-        -------
-        A new parameter vector.
+        :return: A new parameter vector.
         """
         if i == j:
             raise ValueError("i == j")

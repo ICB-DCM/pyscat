@@ -97,9 +97,7 @@ class SacessOptimizer:
     ----------
     .. footbibliography::
 
-    Attributes
-    ----------
-    histories:
+    :ivar histories:
         List of the histories of the best values/parameters
         found by each worker. (Monotonously decreasing objective values.)
         See :func:`pypesto.visualize.optimizer_history.sacess_history` for
@@ -119,9 +117,7 @@ class SacessOptimizer:
     ):
         """Construct.
 
-        Parameters
-        ----------
-        ess_init_args:
+        :param ess_init_args:
             List of argument dictionaries passed to
             :func:`ESSOptimizer.__init__`. Each entry corresponds to one worker
             process. I.e., the length of this list is the number of ESSs.
@@ -146,33 +142,33 @@ class SacessOptimizer:
             ...
              {'dim_refset': 7, 'balance': 1.0, 'local_n1': 4, 'local_n2': 4}]
 
-        num_workers:
+        :param num_workers:
             Number of workers to be used. If this argument is given,
             (different) default ESS settings will be used for each worker.
             Mutually exclusive with ``ess_init_args``.
             See :func:`get_default_ess_options` for details on the default
             settings.
-        max_walltime_s:
+        :param max_walltime_s:
             Maximum walltime in seconds. It will only be checked between local
             optimizations and other simulations, and thus, may be exceeded by
             the duration of a local search. Defaults to no limit.
             Note that in order to impose the wall time limit also on the local
             optimizer, the user has to provide a wrapper function similar to
             :meth:`SacessFidesFactory.__call__`.
-        ess_loglevel:
+        :param ess_loglevel:
             Loglevel for ESS runs.
-        sacess_loglevel:
+        :param sacess_loglevel:
             Loglevel for SACESS runs.
-        tmpdir:
+        :param tmpdir:
             Directory for temporary files. This defaults to a directory in the
             current working directory named ``SacessOptimizerTemp-{random suffix}``.
             When setting this option, make sure any optimizers running in
             parallel have a unique `tmpdir`. Expected to be empty.
-        mp_start_method:
+        :param mp_start_method:
             The start method for the multiprocessing context.
             See :mod:`multiprocessing` for details. Running `SacessOptimizer`
             under Jupyter may require ``mp_start_method="fork"``.
-        options:
+        :param options:
             Further optimizer hyperparameters, see :class:`SacessOptions`.
         """
         if (num_workers is None and ess_init_args is None) or (
@@ -216,9 +212,7 @@ class SacessOptimizer:
         a good chance for deadlocks. Postpone spawning threads until after
         `minimize` or change the *start method* to ``spawn``.
 
-        Parameters
-        ----------
-        problem:
+        :param problem:
             Minimization problem.
             :meth:`Problem.startpoint_method` will be used to sample random
             points. `SacessOptimizer` will deal with non-evaluable points.
@@ -226,13 +220,11 @@ class SacessOptimizer:
             with ``check_fval=True`` or ``check_grad=True`` is not recommended
             since it would create significant overhead.
 
-        startpoint_method:
+        :param startpoint_method:
             Method for choosing starting points.
             **Deprecated. Use ``problem.startpoint_method`` instead.**
 
-        Returns
-        -------
-        _:
+        :return:
             Result object with optimized parameters in
             :attr:`pypesto.Result.optimize_result`.
             Results are sorted by objective. At least the best parameters are
@@ -414,25 +406,23 @@ class SacessManager:
     Manages shared memory of a SACESS run. Loosely corresponds to the manager
     process in [PenasGon2017]_.
 
-    Attributes
-    ----------
-    _dim: Dimension of the optimization problem
-    _num_workers: Number of workers
-    _ess_options: ESS options for each worker
-    _best_known_fx: Best objective value encountered so far
-    _best_known_x: Parameters corresponding to ``_best_known_fx``
-    _worker_scores: Performance score of the different workers (the higher, the
-        more promising the respective worker is considered)
-    _worker_comms: Number of communications received from the individual
+    :ivar _dim: Dimension of the optimization problem
+    :ivar _num_workers: Number of workers
+    :ivar _ess_options: ESS options for each worker
+    :ivar _best_known_fx: Best objective value encountered so far
+    :ivar _best_known_x: Parameters corresponding to ``_best_known_fx``
+    :ivar _worker_scores: Performance score of the different workers
+        (the higher, the more promising the respective worker is considered)
+    :ivar _worker_comms: Number of communications received from the individual
         workers
-    _rejections: Number of rejected solutions received from workers since the
-        last adaptation of ``_rejection_threshold``.
-    _rejection_threshold: Threshold for relative objective improvements that
-        incoming solutions have to pass to be accepted
-    _lock: Lock for accessing shared state.
-    _terminate: Flag to signal termination of the SACESS run to workers
-    _logger: A logger instance
-    _options: Further optimizer hyperparameters.
+    :ivar _rejections: Number of rejected solutions received from workers since
+        the last adaptation of ``_rejection_threshold``.
+    :ivar _rejection_threshold: Threshold for relative objective improvements
+        that incoming solutions have to pass to be accepted
+    :ivar _lock: Lock for accessing shared state.
+    :ivar _terminate: Flag to signal termination of the SACESS run to workers
+    :ivar _logger: A logger instance
+    :ivar _options: Further optimizer hyperparameters.
     """
 
     def __init__(
@@ -495,12 +485,10 @@ class SacessManager:
 
         To be called by a worker.
 
-        Parameters
-        ----------
-        x: Model parameters
-        fx: Objective value corresponding to ``x``
-        sender_idx: Index of the worker submitting the results.
-        elapsed_time_s: Elapsed time since the beginning of the sacess run.
+        :param x: Model parameters
+        :param fx: Objective value corresponding to ``x``
+        :param sender_idx: Index of the worker submitting the results.
+        :param elapsed_time_s: Elapsed time since the beginning of the sacess run.
         """
         abs_change = fx - self._best_known_fx.value
         with self._lock:
@@ -579,24 +567,22 @@ class SacessWorker:
     Runs ESSs and exchanges information with a SacessManager.
     Corresponds to a worker process in [PenasGon2017]_.
 
-    Attributes
-    ----------
-    _manager: The sacess manager this worker is working for.
-    _worker_idx: Index of this worker.
-    _best_known_fx: Best objective value known to this worker (obtained on its
-        own or received from the manager).
-    _n_received_solutions: Number of solutions received by this worker since
-        the last one was sent to the manager.
-    _neval: Number of objective evaluations since the last solution was sent
-        to the manager.
-    _ess_kwargs: ESSOptimizer options for this worker (may get updated during
-        the self-adaptive step).
-    _n_sent_solutions: Number of solutions sent to the Manager.
-    _max_walltime_s: Walltime limit.
-    _logger: A Logger instance.
-    _loglevel: Logging level for sacess
-    _ess_loglevel: Logging level for ESS runs
-    _tmp_result_file: Path of a temporary file to be created.
+    :ivar _manager: The sacess manager this worker is working for.
+    :ivar _worker_idx: Index of this worker.
+    :ivar _best_known_fx: Best objective value known to this worker
+        (obtained on its own or received from the manager).
+    :ivar _n_received_solutions: Number of solutions received by this worker
+        since the last one was sent to the manager.
+    :ivar _neval: Number of objective evaluations since the last solution was
+        sent to the manager.
+    :ivar _ess_kwargs: ESSOptimizer options for this worker
+        (may get updated during the self-adaptive step).
+    :ivar _n_sent_solutions: Number of solutions sent to the Manager.
+    :ivar _max_walltime_s: Walltime limit.
+    :ivar _logger: A Logger instance.
+    :ivar _loglevel: Logging level for sacess
+    :ivar _ess_loglevel: Logging level for ESS runs
+    :ivar _tmp_result_file: Path of a temporary file to be created.
     """
 
     def __init__(
@@ -857,9 +843,8 @@ class SacessWorker:
     def _keep_going(self, ess: ESSOptimizer) -> bool:
         """Check exit criteria.
 
-        Returns
-        -------
-        ``True`` if none of the exit criteria is met, ``False`` otherwise.
+        :return: ``True`` if none of the exit criteria is met,
+            ``False`` otherwise.
         """
         # elapsed time
         if time.time() - self._start_time >= self._max_walltime_s:
@@ -974,11 +959,9 @@ def get_default_ess_options(
 
     Based on https://bitbucket.org/DavidPenas/sacess-library/src/508e7ac15579104731cf1f8c3969960c6e72b872/src/method_module_fortran/eSS/parallelscattersearchfunctions.f90#lines-929
 
-    Parameters
-    ----------
-    num_workers: Number of configurations to return.
-    dim: Problem dimension (number of optimized parameters).
-    local_optimizer: The local optimizer to use
+    :param num_workers: Number of configurations to return.
+    :param dim: Problem dimension (number of optimized parameters).
+    :param local_optimizer: The local optimizer to use
         (see same argument in :class:`ESSOptimizer`), a boolean indicating
         whether to set the default local optimizer
         (currently :class:`FidesOptimizer`), a :class:`Optimizer` instance,
@@ -1159,12 +1142,10 @@ class SacessFidesFactory:
     Besides that, default options are used.
 
 
-    Parameters
-    ----------
-    fides_options:
+    :param fides_options:
         Options for the :class:`FidesOptimizer`.
         See :class:`fides.constants.Options`.
-    fides_kwargs:
+    :param fides_kwargs:
         Keyword arguments for the :class:`FidesOptimizer`. See
         :meth:`FidesOptimizer.__init__`. Must not include ``options``.
     """
@@ -1186,7 +1167,7 @@ class SacessFidesFactory:
         try:
             import fides  # noqa F401
         except ImportError:
-            from pypesto.optimizer import OptimizerImportError
+            from pypesto.optimize.optimizer import OptimizerImportError
 
             raise OptimizerImportError("fides") from None
 
@@ -1216,10 +1197,7 @@ class SacessCmaFactory:
     limit imposed on :class:`SacessOptimizer` to :class:`CmaOptimizer`.
     Besides that, default options are used.
 
-
-    Parameters
-    ----------
-    options:
+    :param options:
         Options as passed to :meth:`CmaOptimizer.__init__`.
         See ``cma.CMAOptions()`` for available options.
     """
@@ -1262,10 +1240,7 @@ class SacessIpoptFactory:
     limit imposed on :class:`SacessOptimizer` to :class:`IpoptOptimizer`.
     Besides that, default options are used.
 
-
-    Parameters
-    ----------
-    ipopt_options:
+    :param ipopt_options:
         Options for the :class:`IpoptOptimizer`.
         See https://coin-or.github.io/Ipopt/OPTIONS.html.
     """
@@ -1319,21 +1294,19 @@ class SacessWorkerResult:
     :class:`SacessWorker` instance that is to be sent to
     :class:`SacessOptimizer`.
 
-    Attributes
-    ----------
-    x:
+    :ivar x:
         Best parameters found.
-    fx:
+    :ivar fx:
         Objective value corresponding to ``x``.
-    n_eval:
+    :ivar n_eval:
         Number of objective evaluations performed.
-    n_iter:
+    :ivar n_iter:
         Number of scatter search iterations performed.
-    n_local:
+    :ivar n_local:
         Number of local searches performed.
-    history:
+    :ivar history:
         History object containing information about the optimization process.
-    exit_flag:
+    :ivar exit_flag:
         Exit flag of the optimization process.
     """
 
@@ -1350,19 +1323,17 @@ class SacessWorkerResult:
 class SacessOptions:
     """Container for :class:`SacessOptimizer` hyperparameters.
 
-    Parameters
-    ----------
-    manager_initial_rejection_threshold, manager_minimum_rejection_threshold:
+    :param manager_initial_rejection_threshold, manager_minimum_rejection_threshold:
         Initial and minimum threshold for relative objective improvements that
         incoming solutions have to pass to be accepted. If the number of
         rejected solutions exceeds the number of workers, the threshold is
         halved until it reaches ``manager_minimum_rejection_threshold``.
 
-    worker_acceptance_threshold:
+    :param worker_acceptance_threshold:
         Minimum relative improvement of the objective compared to the best
         known value to be eligible for submission to the Manager.
 
-    adaptation_min_evals, adaptation_sent_offset, adaptation_sent_coeff:
+    :param adaptation_min_evals, adaptation_sent_offset, adaptation_sent_coeff:
         Hyperparameters that control when the workers will adapt their settings
         based on the performance of the other workers.
 

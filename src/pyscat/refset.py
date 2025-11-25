@@ -10,17 +10,11 @@ from .function_evaluator import FunctionEvaluator
 class RefSet:
     """Scatter search reference set.
 
-    Attributes
-    ----------
-    dim:
-        Reference set size
-    evaluator:
-        Function evaluator
-    x:
-        Parameters in the reference set
-    fx:
-        Function values at the parameters in the reference set
-    n_stuck:
+    :ivar dim: Reference set size
+    :ivar evaluator: Function evaluator
+    :ivar x: Parameters in the reference set
+    :ivar fx: Function values at the parameters in the reference set
+    :ivar n_stuck:
         Counts the number of times a refset member did not lead to an
         improvement in the objective (length: ``dim``).
     """
@@ -34,15 +28,13 @@ class RefSet:
     ):
         """Construct.
 
-        Parameters
-        ----------
-        dim:
+        :param dim:
             Reference set size
-        evaluator:
+        :param evaluator:
             Function evaluator
-        x:
+        :param x:
             Initial RefSet parameters.
-        fx:
+        :param fx:
             Function values corresponding to entries in x. Must be provided if
             and only if ``x`` is not ``None``.
         """

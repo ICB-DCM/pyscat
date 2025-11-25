@@ -1,6 +1,11 @@
+[![PyPI - Version](https://img.shields.io/pypi/v/pyscat)](https://pypi.org/project/pyscat/)
+
 # PyScat
 
 *A Python library for scatter-search metaheuristics.*
+
+> **Note**
+> This package is still under development. Documentation is incomplete and may change without notice. The PyPI package is currently only a stub and does not contain the full functionality.
 
 PyScat currently implements two scatter-search algorithms:
 

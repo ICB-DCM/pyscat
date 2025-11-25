@@ -6,5 +6,6 @@
    :caption: Contents:
 
    About <about>
+   Getting Started <getting_started>
    API reference   <api>
    Development   <development>

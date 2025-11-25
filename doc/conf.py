@@ -21,6 +21,7 @@ extensions = [
     "sphinx_autodoc_typehints",
     "sphinxcontrib.bibtex",
     "sphinx_rtd_theme",
+    "nbsphinx",
 ]
 
 # templates_path = ["_templates"]

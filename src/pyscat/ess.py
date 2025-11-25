@@ -80,6 +80,12 @@ class ESSOptimizer:
     ESS is gradient-free, unless a gradient-based local optimizer is used
     (``local_optimizer``).
 
+
+    :ivar history:
+        History of the best values/parameters found so far.
+        (Monotonously decreasing objective values.)
+
+
     Hyperparameters
     ---------------
 
@@ -184,9 +190,6 @@ class ESSOptimizer:
         :param n_threads:
             Number of parallel threads to use for parallel function evaluation.
             Mutually exclusive with `n_procs`.
-        :param history:
-            History of the best values/parameters found so far.
-            (Monotonously decreasing objective values.)
         :param result_includes_refset:
             Whether the :meth:`minimize` result should include the final
             RefSet, or just the local search results and the overall best

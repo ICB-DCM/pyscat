@@ -60,6 +60,12 @@ class SacessOptimizer:
     :class:`SacessOptimizer` can be used with or without a local optimizer, but
     it is highly recommended to use one.
 
+    :ivar histories:
+        List of the histories of the best values/parameters
+        found by each worker. (Monotonously decreasing objective values.)
+        See :func:`pypesto.visualize.optimizer_history.sacess_history` for
+        visualization.
+
     A basic example using :class:`SacessOptimizer` to minimize the Rosenbrock
     function:
 
@@ -91,17 +97,11 @@ class SacessOptimizer:
 
     .. seealso::
 
-       :class:`pypesto.optimize.ess.ess.ESSOptimizer`
+       :class:`ESSOptimizer`
 
     References
     ----------
     .. footbibliography::
-
-    :ivar histories:
-        List of the histories of the best values/parameters
-        found by each worker. (Monotonously decreasing objective values.)
-        See :func:`pypesto.visualize.optimizer_history.sacess_history` for
-        visualization.
     """
 
     def __init__(
@@ -131,7 +131,7 @@ class SacessOptimizer:
             :func:`get_default_ess_options`. For example, to run
             :class:`SacessOptimizer` without a local optimizer, use:
 
-            >>> from pypesto.optimize.ess import get_default_ess_options
+            >>> from pyscat get_default_ess_options
             >>> ess_init_args = get_default_ess_options(
             ...     num_workers=12,
             ...     dim=10, # usually problem.dim

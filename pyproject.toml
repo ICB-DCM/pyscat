@@ -25,7 +25,15 @@ classifiers = [
   "Topic :: Scientific/Engineering",
   "Topic :: Scientific/Engineering :: Mathematics",
 ]
-
+dependencies = [
+  "numpy",
+  "pypesto",
+  "fides",
+]
+[project.optional-dependencies]
+test = ["pytest>=7", "pre-commit>=3", "pytest-rerunfailures", "scipy"]
+cma = ["pypesto[cma]"]
+ipopt = ["pypesto[ipopt]"]
 [project.urls]
 "Homepage" = "https://github.com/ICB-DCM/pyscat"
 "Source" = "https://github.com/ICB-DCM/pyscat"

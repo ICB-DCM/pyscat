@@ -40,3 +40,6 @@ doc = ["sphinx", "sphinx-rtd-theme", "sphinx-autodoc-typehints", "sphinxcontrib-
 "Source" = "https://github.com/ICB-DCM/pyscat"
 
 [tool.setuptools_scm]
+
+[tool.pytest.ini_options]
+addopts = "--doctest-modules --ignore=doc/conf.py"

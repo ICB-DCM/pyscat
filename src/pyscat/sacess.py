@@ -131,7 +131,7 @@ class SacessOptimizer:
             :func:`get_default_ess_options`. For example, to run
             :class:`SacessOptimizer` without a local optimizer, use:
 
-            >>> from pyscat get_default_ess_options
+            >>> from pyscat import get_default_ess_options
             >>> ess_init_args = get_default_ess_options(
             ...     num_workers=12,
             ...     dim=10, # usually problem.dim

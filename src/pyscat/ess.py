@@ -30,19 +30,19 @@ __all__ = ["ESSOptimizer", "ESSExitFlag"]
 class ESSExitFlag(int, enum.Enum):
     """Scatter search exit flags.
 
-    Exit flags used by :class:`pypesto.ess.ESSOptimizer` and
-    :class:`pypesto.ess.SacessOptimizer`.
+    Exit flags used by :class:`ESSOptimizer` and
+    :class:`SacessOptimizer`.
     """
 
-    # ESS did not run/finish yet
+    #: ESS did not run/finish yet
     DID_NOT_RUN = 0
-    # Exited after reaching the maximum number of iterations
+    #: Exited after reaching the maximum number of iterations
     MAX_ITER = -1
-    # Exited after exhausting function evaluation budget
+    #: Exited after exhausting function evaluation budget
     MAX_EVAL = -2
-    # Exited after exhausting wall-time budget
+    #: Exited after exhausting wall-time budget
     MAX_TIME = -3
-    # Termination because of other reasons than exit criteria
+    #: Termination because of other reasons than exit criteria
     ERROR = -99
 
 
@@ -115,7 +115,7 @@ class ESSOptimizer:
 
     .. seealso::
 
-       :class:`pypesto.optimize.ess.sacess.SacessOptimizer`
+       :class:`SacessOptimizer`
 
     .. footbibliography::
     """

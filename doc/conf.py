@@ -32,6 +32,8 @@ autodoc_default_options = {
     "imported-members": ["pyscat"],
     "inherited-members": False,
     "show-inheritance": None,
+    "undoc-members": True,
+    "special-members": "__init__",
 }
 
 # sphinx-autodoc-typehints options
@@ -43,6 +45,8 @@ typehints_fully_qualified = False
 
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
+    "pypesto": ("https://pypesto.readthedocs.io/en/latest/", None),
+    "numpy": ("https://numpy.org/doc/stable/", None),
 }
 
 typehints_document_rtype = True

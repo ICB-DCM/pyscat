@@ -1,0 +1,4 @@
+# sphinx output
+_build/
+# sphinx-autodoc output
+api/

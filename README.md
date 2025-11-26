@@ -5,7 +5,9 @@
 *A Python library for scatter-search metaheuristics.*
 
 > **Note**
-> This package is still under development. Documentation is incomplete and may change without notice. The PyPI package is currently only a stub and does not contain the full functionality.
+> This package is still under development. Documentation is incomplete, and the API may change without notice. The PyPI package is currently only a stub and does not contain the full functionality.
+> For now, please use the scatter search implementation in
+> [pyPESTO](https://pypesto.readthedocs.io/en/latest/).
 
 PyScat currently implements two scatter-search algorithms:
 

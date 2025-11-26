@@ -659,8 +659,27 @@ class DefaultRecombination:
 
         :return: A new parameter vector.
         """
+        c1, c2 = self.get_hyper_rect(refset, evaluator, i, j)
+        return np.random.uniform(low=c1, high=c2, size=evaluator.problem.dim)
+
+    def get_hyper_rect(
+        self, refset: RefSet, evaluator: FunctionEvaluator, i: int, j: int
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Get biased hyper-rectangle based on RefSet members ``i`` and ``j``.
+        Assumes that the RefSet is sorted by quality.
+
+        :param i:
+            Index of first RefSet member for recombination
+        :param j:
+            Index of second RefSet member for recombination
+
+        :return: A tuple (c1, c2) with the lower and upper corner of the
+            hyper-rectangle.
+        """
         if i == j:
             raise ValueError("i == j")
+
         x = refset.x
 
         d = (x[j] - x[i]) / 2.0
@@ -678,7 +697,7 @@ class DefaultRecombination:
         c1 = np.fmax(np.fmin(c1, ub), lb)
         c2 = np.fmax(np.fmin(c2, ub), lb)
 
-        return np.random.uniform(low=c1, high=c2, size=evaluator.problem.dim)
+        return c1, c2
 
     def combine_solutions(
         self,

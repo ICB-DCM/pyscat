@@ -296,6 +296,7 @@ class ESSOptimizer:
             self._maybe_update_global_best(x, fx)
 
         self._recombination_strategy = DefaultRecombination()
+        self._intensification_strategy = GoBeyondStrategy()
 
     def minimize(
         self,
@@ -334,8 +335,17 @@ class ESSOptimizer:
             )
         )
 
-        # Go-beyond strategy to further improve the new combinations
-        self._go_beyond(x_best_children, fx_best_children)
+        # Intensification strategy to further improve the new combinations
+        self._intensification_strategy.execute(
+            x_best_children,
+            fx_best_children,
+            self.refset,
+            self.evaluator,
+            should_continue=self._keep_going,
+        )
+        for i in range(self.refset.dim):
+            # update overall best after intensification?
+            self._maybe_update_global_best(x_best_children[i], fx_best_children[i])
 
         # Maybe perform a local search
         if self.local_optimizer is not None and self._keep_going():
@@ -580,59 +590,6 @@ class ESSOptimizer:
                 {pypesto.C.FVAL: self.fx_best},
             )
 
-    def _go_beyond(self, x_best_children, fx_best_children):
-        """Apply go-beyond strategy.
-
-        If a child is better than its parent, intensify search in that
-        direction until no further improvement is made.
-
-        See [Egea2009]_ algorithm 1 + section 3.4
-        """
-        for i in range(self.refset.dim):
-            if fx_best_children[i] >= self.refset.fx[i]:
-                continue
-
-            # offspring is better than parent
-            x_parent = self.refset.x[i].copy()
-            fx_parent = self.refset.fx[i]
-            x_child = x_best_children[i].copy()
-            fx_child = fx_best_children[i]
-            improvement = 1
-            # Multiplier used in determining the hyper-rectangle from which to
-            # sample children. Will be increased in case of 2 consecutive
-            # improvements.
-            # (corresponds to 1/\Lambda in [Egea2009]_ algorithm 1)
-            go_beyond_factor = 1
-            while fx_child < fx_parent:
-                # update best child
-                x_best_children[i] = x_child
-                fx_best_children[i] = fx_child
-
-                # create new solution, child becomes parent
-                # hyper-rectangle for sampling child
-                box_lb = x_child - (x_parent - x_child) * go_beyond_factor
-                box_ub = x_child
-                # clip to bounds
-                ub, lb = self.evaluator.problem.ub, self.evaluator.problem.lb
-                box_lb = np.fmax(np.fmin(box_lb, ub), lb)
-                box_ub = np.fmax(np.fmin(box_ub, ub), lb)
-                # sample parameters
-                x_new = np.random.uniform(low=box_lb, high=box_ub)
-                x_parent = x_child
-                fx_parent = fx_child
-                x_child = x_new
-                fx_child = self.evaluator.single(x_child)
-
-                improvement += 1
-                if improvement == 2:
-                    go_beyond_factor *= 2
-                    improvement = 0
-
-            # update overall best?
-            self._maybe_update_global_best(x_best_children[i], fx_best_children[i])
-            if not self._keep_going():
-                break
-
     def _report_iteration(self):
         """Log the current iteration."""
         if self.n_iter == 0:
@@ -763,3 +720,96 @@ class DefaultRecombination:
                 break
 
         return y, fy
+
+
+class IntensificationStrategy(Protocol):
+    def execute(
+        self,
+        x_best_children: np.ndarray,
+        fx_best_children: np.ndarray,
+        refset: RefSet,
+        evaluator: FunctionEvaluator,
+        should_continue: Callable[[], bool] | None = None,
+    ) -> None:
+        """
+        Update arrays `x_best_children`, `fx_best_children`
+        for the next generation.
+
+        :param x_best_children:
+            Next generation parameter vectors (shape: refset.dim x problem.dim).
+            Will be updated in-place.
+        :param fx_best_children:
+            Next generation objective values (shape: refset.dim).
+            Will be updated in-place.
+        :param refset:
+            Current RefSet.
+        :param evaluator:
+            Function evaluator.
+        :param should_continue:
+            Callable that returns whether the algorithm should continue.
+            If ``None``, the algorithm is assumed to always continue.
+        """
+
+
+class GoBeyondStrategy:
+    """
+    Go-beyond intensification strategy.
+
+    If a child is better than its parent, intensify search in that
+    direction until no further improvement is made.
+
+    See [Egea2009]_ algorithm 1 + section 3.4
+    """
+
+    def execute(
+        self,
+        x_best_children: np.ndarray,
+        fx_best_children: np.ndarray,
+        refset: RefSet,
+        evaluator: FunctionEvaluator,
+        should_continue: Callable[[], bool] | None = None,
+    ) -> None:
+        """Apply go-beyond strategy."""
+        for i in range(refset.dim):
+            if fx_best_children[i] >= refset.fx[i]:
+                # Offspring is not better than parent
+                continue
+
+            # offspring is better than parent
+            x_parent = refset.x[i].copy()
+            fx_parent = refset.fx[i]
+            x_child = x_best_children[i].copy()
+            fx_child = fx_best_children[i]
+            improvement = 1
+            # Multiplier used in determining the hyper-rectangle from which to
+            # sample children. Will be increased in case of 2 consecutive
+            # improvements.
+            # (corresponds to 1/\Lambda in [Egea2009]_ algorithm 1)
+            go_beyond_factor = 1
+            while fx_child < fx_parent:
+                # update best child
+                x_best_children[i] = x_child
+                fx_best_children[i] = fx_child
+
+                # create new solution, child becomes parent
+                # hyper-rectangle for sampling child
+                box_lb = x_child - (x_parent - x_child) * go_beyond_factor
+                box_ub = x_child
+                # clip to bounds
+                ub, lb = evaluator.problem.ub, evaluator.problem.lb
+                box_lb = np.fmax(np.fmin(box_lb, ub), lb)
+                box_ub = np.fmax(np.fmin(box_ub, ub), lb)
+                # sample parameters
+                x_new = np.random.uniform(low=box_lb, high=box_ub)
+                x_parent = x_child
+                fx_parent = fx_child
+                x_child = x_new
+                fx_child = evaluator.single(x_child)
+
+                improvement += 1
+                if improvement == 2:
+                    go_beyond_factor *= 2
+                    improvement = 0
+
+            if should_continue is not None and not should_continue():
+                break

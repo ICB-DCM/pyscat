@@ -9,7 +9,7 @@ from __future__ import annotations
 import enum
 import logging
 import time
-from typing import Protocol
+from typing import Protocol, Callable
 
 import numpy as np
 
@@ -295,6 +295,8 @@ class ESSOptimizer:
         for x, fx in zip(self.refset.x, self.refset.fx):
             self._maybe_update_global_best(x, fx)
 
+        self._recombination_strategy = DefaultRecombination()
+
     def minimize(
         self,
         problem: Problem = None,
@@ -326,7 +328,11 @@ class ESSOptimizer:
         self.refset.prune_too_close()
 
         # Apply combination method to update the RefSet
-        x_best_children, fx_best_children = self._combine_solutions()
+        x_best_children, fx_best_children = (
+            self._recombination_strategy.combine_solutions(
+                self.refset, self.evaluator, should_continue=self._keep_going
+            )
+        )
 
         # Go-beyond strategy to further improve the new combinations
         self._go_beyond(x_best_children, fx_best_children)
@@ -430,73 +436,6 @@ class ESSOptimizer:
         if self.max_eval is None:
             return np.inf
         return self.max_eval - self.evaluator.n_eval
-
-    def _combine_solutions(self) -> tuple[np.ndarray, np.ndarray]:
-        """Combine solutions and evaluate.
-
-        Creates the next generation from the RefSet by pair-wise combination
-        of all RefSet members. Creates ``RefSet.dim ** 2 - RefSet.dim`` new
-        parameter vectors, tests them, and keeps the best child of each parent.
-
-        :returns:
-            * y:
-                The next generation of parameter vectors
-                (`dim_refset` x `dim_problem`).
-            * fy:
-                The objective values corresponding to the parameters in `y`.
-        """
-        y = np.zeros(shape=(self.refset.dim, self.evaluator.problem.dim))
-        fy = np.full(shape=self.refset.dim, fill_value=np.inf)
-        for i in range(self.refset.dim):
-            xs_new = np.vstack(
-                tuple(self._combine(i, j) for j in range(self.refset.dim) if i != j),
-            )
-            fxs_new = self.evaluator.multiple(xs_new)
-            best_idx = np.argmin(fxs_new)
-            fy[i] = fxs_new[best_idx]
-            y[i] = xs_new[best_idx]
-
-            if not self._keep_going():
-                break
-        return y, fy
-
-    def _combine(self, i, j) -> np.ndarray:
-        """Combine RefSet members ``i`` and ``j``.
-
-        Samples a new point from a biased hyper-rectangle derived from the
-        given parents, favoring the direction of the better parent.
-
-        Assumes that the RefSet is sorted by quality.
-
-        See [EgeaBal2009]_ Section 3.2 for details.
-
-        :param i:
-            Index of first RefSet member for recombination
-        :param j:
-            Index of second RefSet member for recombination
-
-        :return: A new parameter vector.
-        """
-        if i == j:
-            raise ValueError("i == j")
-        x = self.refset.x
-
-        d = (x[j] - x[i]) / 2
-        # i < j implies f(x_i) < f(x_j)
-        alpha = 1 if i < j else -1
-        # beta is a relative rank-based distance between the two parents
-        #  0 <= beta <= 1
-        beta = (np.abs(j - i) - 1) / (self.refset.dim - 2)
-        # new hyper-rectangle, biased towards the better parent
-        c1 = x[i] - d * (1 + alpha * beta)
-        c2 = x[i] + d * (1 - alpha * beta)
-
-        # this will not always yield admissible points -> clip to bounds
-        ub, lb = self.evaluator.problem.ub, self.evaluator.problem.lb
-        c1 = np.fmax(np.fmin(c1, ub), lb)
-        c2 = np.fmax(np.fmin(c2, ub), lb)
-
-        return np.random.uniform(low=c1, high=c2, size=self.evaluator.problem.dim)
 
     def _do_local_search(
         self, x_best_children: np.ndarray, fx_best_children: np.ndarray
@@ -726,3 +665,101 @@ class ESSOptimizer:
                 f"Num local solutions: {len(self.local_solutions)}."
             )
             self.logger.debug(f"Final refset: {np.sort(self.refset.fx)} ")
+
+
+class RecombinationStrategy(Protocol):
+    def combine_solutions(
+        self,
+        refset: RefSet,
+        evaluator: FunctionEvaluator,
+        should_continue: Callable[[], bool] | None = None,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Return (y, fy) arrays for the next generation (shape: refset.dim x problem.dim)."""
+
+
+class DefaultRecombination:
+    """
+    Default ESS recombination scheme.
+
+    Biased hyper-rectangle sampling.
+    See [EgeaBal2009]_ Section 3.2 for details.
+    """
+
+    def combine(
+        self, refset: RefSet, evaluator: FunctionEvaluator, i: int, j: int
+    ) -> np.ndarray:
+        """Combine RefSet members ``i`` and ``j``.
+
+        Samples a new point from a biased hyper-rectangle derived from the
+        given parents, favoring the direction of the better parent.
+
+        Assumes that the RefSet is sorted by quality.
+
+        :param i:
+            Index of first RefSet member for recombination
+        :param j:
+            Index of second RefSet member for recombination
+
+        :return: A new parameter vector.
+        """
+        if i == j:
+            raise ValueError("i == j")
+        x = refset.x
+
+        d = (x[j] - x[i]) / 2.0
+        # i < j implies f(x_i) < f(x_j) for the sorted RefSet
+        alpha = 1 if i < j else -1
+        # beta is a relative rank-based distance between the two parents
+        #  0 <= beta <= 1
+        beta = (abs(j - i) - 1) / (refset.dim - 2)
+        # new hyper-rectangle, biased towards the better parent
+        c1 = x[i] - d * (1 + alpha * beta)
+        c2 = x[i] + d * (1 - alpha * beta)
+
+        # this will not always yield admissible points -> clip to bounds
+        ub, lb = evaluator.problem.ub, evaluator.problem.lb
+        c1 = np.fmax(np.fmin(c1, ub), lb)
+        c2 = np.fmax(np.fmin(c2, ub), lb)
+
+        return np.random.uniform(low=c1, high=c2, size=evaluator.problem.dim)
+
+    def combine_solutions(
+        self,
+        refset: RefSet,
+        evaluator: FunctionEvaluator,
+        should_continue: Callable[[], bool] | None = None,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Combine solutions and evaluate.
+
+        Creates the next generation from the RefSet by pair-wise combination
+        of all RefSet members. Creates ``RefSet.dim ** 2 - RefSet.dim`` new
+        parameter vectors, tests them, and keeps the best child of each parent.
+
+        :returns:
+            * y:
+                The next generation of parameter vectors
+                (`dim_refset` x `dim_problem`).
+            * fy:
+                The objective values corresponding to the parameters in `y`.
+        """
+        dim = refset.dim
+        p_dim = evaluator.problem.dim
+        y = np.zeros((dim, p_dim))
+        fy = np.full(dim, np.inf)
+
+        for i in range(dim):
+            # build children from i combined with all other j != i
+            xs_new = np.vstack(
+                tuple(
+                    self.combine(refset, evaluator, i, j) for j in range(dim) if j != i
+                )
+            )
+            fxs_new = evaluator.multiple(xs_new)
+            best_idx = int(np.argmin(fxs_new))
+            fy[i] = fxs_new[best_idx]
+            y[i] = xs_new[best_idx]
+
+            if should_continue is not None and not should_continue():
+                break
+
+        return y, fy

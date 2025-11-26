@@ -38,6 +38,7 @@ doc = ["sphinx", "sphinx-rtd-theme", "sphinx-autodoc-typehints", "sphinxcontrib-
 [project.urls]
 "Homepage" = "https://github.com/ICB-DCM/pyscat"
 "Source" = "https://github.com/ICB-DCM/pyscat"
+"Documentation" = "https://pyscat.readthedocs.io/"
 
 [tool.setuptools_scm]
 

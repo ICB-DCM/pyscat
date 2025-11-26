@@ -25,7 +25,7 @@ import pytest
     ],
 )
 @pytest.mark.flaky(reruns=3)
-def test_ess(problem, local_optimizer, ess_type, request):
+def test_ess(problem, local_optimizer, ess_type):
     if ess_type == "ess":
         ess = ESSOptimizer(
             dim_refset=10,
@@ -37,9 +37,6 @@ def test_ess(problem, local_optimizer, ess_type, request):
             balance=0.5,
         )
     elif ess_type == "sacess":
-        if "cr" in request.node.callspec.id or "integrated" in request.node.callspec.id:
-            # Not pickleable - incompatible with CESS
-            pytest.skip()
         # SACESS with 12 processes
         #  We use a higher number than reasonable to be more likely to trigger
         #  any potential race conditions (gh-1204)

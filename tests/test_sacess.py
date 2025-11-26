@@ -8,6 +8,30 @@ import pypesto
 import numpy as np
 import scipy
 
+from pyscat.examples import problem_info
+import pytest
+
+
+@pytest.mark.flaky(reruns=3)
+@pytest.mark.parametrize("problem_info", problem_info.values(), ids=problem_info.keys())
+def test_sacess_finds_minimum(problem_info):
+    expected_best_fx = problem_info["global_best"]
+    problem = problem_info["problem"]
+
+    ess_init_args = get_default_ess_options(
+        num_workers=8, dim=problem.dim, local_optimizer=False
+    )
+    ess = SacessOptimizer(max_walltime_s=6, ess_init_args=ess_init_args)
+    res = ess.minimize(problem)
+    best_fx = res.optimize_result[0].fval
+
+    assert abs(best_fx - expected_best_fx) < 1e-4, (
+        f"Expected best fx ~ {expected_best_fx}, got {best_fx}"
+    )
+    assert best_fx >= expected_best_fx, (
+        f"Best fx {best_fx} is less than expected minimum {expected_best_fx}"
+    )
+
 
 def test_sacess_adaptation(capsys, problem):
     """Test that adaptation step of the SACESS optimizer succeeds."""

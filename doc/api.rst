@@ -6,5 +6,5 @@ API reference
 .. autosummary::
    :toctree: api
 
-
    pyscat
+   pyscat.plot

@@ -232,7 +232,12 @@ class SacessOptimizer:
             f"workers: {self.ess_init_args} and {self.options}."
         )
         ess_init_args = self.ess_init_args or get_default_ess_options(
-            num_workers=self.num_workers, dim=problem.dim
+            num_workers=self.num_workers,
+            dim=problem.dim,
+            # Dunno what a good default for a derivative-free local optimizer
+            #  would be. So for now, we only use a local optimizer if we can
+            #  use a gradient-based one.
+            local_optimizer=problem.objective.has_grad,
         )
 
         logging_handler = logging.StreamHandler()

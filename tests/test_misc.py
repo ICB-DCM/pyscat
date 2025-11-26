@@ -8,25 +8,9 @@ from pyscat import (
     SacessOptimizer,
     SacessOptions,
 )
-from pyscat.function_evaluator import FunctionEvaluatorMP
-from pyscat.refset import RefSet
 import logging
 from pypesto.optimize import FidesOptimizer
 import pytest
-import pypesto
-import numpy as np
-import scipy
-
-
-@pytest.fixture
-def problem() -> pypesto.Problem:
-    objective = pypesto.objective.Objective(
-        fun=scipy.optimize.rosen, grad=scipy.optimize.rosen_der
-    )
-    problem = pypesto.Problem(
-        objective=objective, lb=0 * np.ones((1, 2)), ub=1 * np.ones((1, 2))
-    )
-    return problem
 
 
 @pytest.mark.parametrize("ess_type", ["ess", "sacess"])
@@ -87,100 +71,3 @@ def test_ess(problem, local_optimizer, ess_type, request):
     if local_optimizer:
         assert res.optimize_result[0].fval < 1e-4
     assert res.optimize_result[0].fval < 1
-
-
-def test_ess_multiprocess(problem):
-    from fides.constants import Options as FidesOptions
-
-    # augment objective with parameter prior to check it's copyable
-    #  https://github.com/ICB-DCM/pyPESTO/issues/1465
-    #  https://github.com/ICB-DCM/pyPESTO/pull/1467
-    problem.objective = pypesto.objective.AggregatedObjective(
-        [
-            problem.objective,
-            pypesto.objective.NegLogParameterPriors(
-                [
-                    pypesto.objective.get_parameter_prior_dict(
-                        0, "uniform", [0, 1], "lin"
-                    )
-                ]
-            ),
-        ]
-    )
-    problem.startpoint_method = pypesto.startpoint.UniformStartpoints()
-
-    ess = ESSOptimizer(
-        max_iter=20,
-        # also test passing a callable as local_optimizer
-        local_optimizer=lambda max_walltime_s, **kwargs: FidesOptimizer(
-            options={FidesOptions.MAXTIME: max_walltime_s}
-        ),
-    )
-    refset = RefSet(
-        dim=10,
-        evaluator=FunctionEvaluatorMP(
-            problem=problem,
-            n_procs=4,
-        ),
-    )
-    refset.initialize_random(10 * refset.dim)
-    res = ess.minimize(
-        refset=refset,
-    )
-    print("ESS result: ", res.summary())
-
-
-def test_sacess_adaptation(capsys, problem):
-    """Test that adaptation step of the SACESS optimizer succeeds."""
-    ess_init_args = get_default_ess_options(
-        num_workers=2, dim=problem.dim, local_optimizer=False
-    )
-    ess = SacessOptimizer(
-        max_walltime_s=2,
-        sacess_loglevel=logging.DEBUG,
-        ess_loglevel=logging.DEBUG,
-        ess_init_args=ess_init_args,
-        options=SacessOptions(
-            # trigger frequent adaptation
-            # - don't do that in production
-            adaptation_min_evals=0,
-            adaptation_sent_offset=0,
-            adaptation_sent_coeff=0,
-        ),
-    )
-    ess.minimize(problem)
-    assert "Updated settings on worker" in capsys.readouterr().err
-
-
-class FunctionOrError:
-    """Callable that raises an error every nth invocation."""
-
-    def __init__(self, fun, error_frequency=100):
-        self.counter = 0
-        self.error_frequency = error_frequency
-        self.fun = fun
-
-    def __call__(self, *args, **kwargs):
-        self.counter += 1
-        if self.counter % self.error_frequency == 0:
-            raise RuntimeError("Intentional error.")
-        return self.fun(*args, **kwargs)
-
-
-def test_sacess_worker_error(capsys):
-    """Check that SacessOptimizer does not hang if an error occurs on a worker."""
-    objective = pypesto.objective.Objective(
-        fun=FunctionOrError(scipy.optimize.rosen), grad=scipy.optimize.rosen_der
-    )
-    problem = pypesto.Problem(
-        objective=objective, lb=0 * np.ones((1, 2)), ub=1 * np.ones((1, 2))
-    )
-    sacess = SacessOptimizer(
-        num_workers=2,
-        max_walltime_s=2,
-        sacess_loglevel=logging.DEBUG,
-        ess_loglevel=logging.DEBUG,
-    )
-    res = sacess.minimize(problem)
-    assert isinstance(res, pypesto.Result)
-    assert "Intentional error." in capsys.readouterr().err

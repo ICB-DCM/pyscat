@@ -1,5 +1,7 @@
 """Helper for objective evaluation during scatter search."""
 
+from __future__ import annotations
+
 import multiprocessing
 import threading
 from collections.abc import Sequence

@@ -1,5 +1,7 @@
 """ReferenceSet functionality for scatter search."""
 
+from __future__ import annotations
+
 from typing import Any, Optional
 
 import numpy as np

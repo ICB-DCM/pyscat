@@ -24,7 +24,7 @@ estimation and leverages its problem definition and optimizer interfaces.
 
 ## 📖 Documentation
 
-The documentation will hopefully soon be available at
+Documentation is available at
 [pyscat.readthedocs.io](https://pyscat.readthedocs.io/).
 
 ## 📦 Installation

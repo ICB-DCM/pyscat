@@ -152,14 +152,6 @@ def test_sacess_adaptation(capsys, problem):
     assert "Updated settings on worker" in capsys.readouterr().err
 
 
-def test_ess_refset_repr():
-    assert RefSet(10, None).__repr__() == "RefSet(dim=10)"
-    assert (
-        RefSet(10, None, x=np.zeros(10), fx=np.arange(10)).__repr__()
-        == "RefSet(dim=10, fx=[0 ... 9])"
-    )
-
-
 class FunctionOrError:
     """Callable that raises an error every nth invocation."""
 

@@ -9,7 +9,7 @@ from __future__ import annotations
 import enum
 import logging
 import time
-from typing import Protocol, Callable
+from typing import Protocol, Callable, Sequence
 
 import numpy as np
 
@@ -468,35 +468,11 @@ class ESSOptimizer:
             self.n_iter >= self.local_n1
             and self.n_iter - self.last_local_search_niter >= self.local_n2
         ):
-            quality_order = np.argsort(fx_best_children)
-            # compute minimal distance between the best children and all local
-            #  optima found so far
-            min_distances = (
-                np.fromiter(
-                    (
-                        min(
-                            np.linalg.norm(
-                                y_i - optimizer_result.x[optimizer_result.free_indices]
-                            )
-                            for optimizer_result in self.local_solutions
-                        )
-                        for y_i in x_best_children
-                    ),
-                    dtype=np.float64,
-                    count=len(x_best_children),
-                )
-                if len(self.local_solutions)
-                else np.zeros(len(x_best_children))
+            priority_order = self.prioritize_local_search_candidates(
+                x_best_children, fx_best_children, self.local_solutions, self.balance
             )
-            # sort by furthest distance to existing local optima
-            diversity_order = np.argsort(min_distances)[::-1]
-            # compute priority, balancing quality and diversity
-            #  (smaller value = higher priority)
-            priority = (
-                1 - self.balance
-            ) * quality_order + self.balance * diversity_order
             local_search_x0_fx0_candidates = (
-                (x_best_children[i], fx_best_children[i]) for i in np.argsort(priority)
+                (x_best_children[i], fx_best_children[i]) for i in priority_order
             )
         else:
             return
@@ -526,6 +502,63 @@ class ESSOptimizer:
 
         self.last_local_search_niter = self.n_iter
         self.evaluator.reset_round_counter()
+
+    @staticmethod
+    def prioritize_local_search_candidates(
+        x_best_children: np.ndarray,
+        fx_best_children: np.ndarray,
+        local_solutions: Sequence[OptimizerResult],
+        balance: float,
+    ) -> np.ndarray:
+        """
+        Compute an index order for local-search start points that balances
+        solution quality and diversity.
+
+        The priority combines a quality ranking (better objective values are
+        preferred) and a diversity ranking (candidates further from known local
+        optima are preferred). The final priority is a weighted combination of
+        the two ranks.
+
+        See [PenasGon2017]_ Algorithm 2 L12-L18.
+
+        :param x_best_children: Array of candidate parameter vectors with shape
+            ``(n_candidates, problem_dim)``.
+        :param fx_best_children: Array of objective values for the candidates
+            with shape ``(n_candidates,)``.
+        :param local_solutions: Sequence of existing local ``OptimizerResult``s
+            used to compute distances for diversity. May be empty.
+        :param balance: Balancing factor in ``[0, 1]``. ``0`` -> prioritize
+            quality only, ``1`` -> prioritize diversity only.
+        :returns: Array of indices into the candidate arrays ordered by
+            decreasing priority (i.e., first index = highest priority).
+        """
+        # rank by fval, smaller is better
+        quality_rank = fx_best_children.argsort().argsort()
+        # compute minimal distance between the best children and all local
+        #  optima found so far
+        min_distances = (
+            np.fromiter(
+                (
+                    min(
+                        np.linalg.norm(
+                            y_i - optimizer_result.x[optimizer_result.free_indices]
+                        )
+                        for optimizer_result in local_solutions
+                    )
+                    for y_i in x_best_children
+                ),
+                dtype=np.float64,
+                count=len(x_best_children),
+            )
+            if len(local_solutions)
+            else np.zeros(len(x_best_children))
+        )
+        # sort by furthest distance to existing local optima
+        diversity_rank = min_distances.argsort()[::-1].argsort()
+        # compute priority, balancing quality and diversity
+        #  (smaller value = higher priority)
+        priority = (1 - balance) * quality_rank + balance * diversity_rank
+        return np.argsort(priority)
 
     def _local_minimize(self, x0: np.ndarray, fx0: float) -> OptimizerResult:
         """Perform a local search from the given startpoint."""

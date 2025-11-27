@@ -7,6 +7,8 @@ from pypesto.optimize import FidesOptimizer
 import pypesto
 from pyscat.examples import problem_info
 import pytest
+import numpy as np
+import numpy.testing as npt
 
 
 @pytest.mark.flaky(reruns=3)
@@ -66,3 +68,30 @@ def test_ess_multiprocess(problem):
         refset=refset,
     )
     print("ESS result: ", res.summary())
+
+
+def test_prioritize_local_search_candidates():
+    x_candidates = np.array([[0.0, 0.0], [1.0, 0.0], [2.0, 1.0], [3.0, 3.0]])
+    fx_candidates = np.array([2.0, 1.0, 3.0, 0.0])
+    local_solutions = [pypesto.result.OptimizerResult(x=np.array([1.0, 0.0]))]
+
+    # balance = 0 -> ranking by fx only
+    # no local solutions
+    order = ESSOptimizer.prioritize_local_search_candidates(
+        x_candidates, fx_candidates, local_solutions=[], balance=0.0
+    )
+    expected = np.array([3, 1, 0, 2])
+    npt.assert_array_equal(order, expected)
+    # with local solutions
+    order = ESSOptimizer.prioritize_local_search_candidates(
+        x_candidates, fx_candidates, local_solutions=local_solutions, balance=0.0
+    )
+    npt.assert_array_equal(order, expected)
+
+    # balance = 1 -> ranking by distance to local solutions only
+    order = ESSOptimizer.prioritize_local_search_candidates(
+        x_candidates, fx_candidates, local_solutions=local_solutions, balance=1.0
+    )
+    # distances: [1, 0, sqrt(2), sqrt(9 + 4)]
+    expected = np.array([3, 2, 0, 1])
+    npt.assert_array_equal(order, expected)

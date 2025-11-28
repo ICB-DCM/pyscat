@@ -18,6 +18,8 @@ from typing import Any, Callable
 
 import pypesto
 
+__all__ = ["EvalLogger"]
+
 
 def _reconstruct_method_interceptor(
     obj: Any, method_name: str, handler

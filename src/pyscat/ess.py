@@ -683,12 +683,14 @@ class DefaultRecombination:
         Samples a new point from a biased hyper-rectangle derived from the
         given parents, favoring the direction of the better parent.
 
-        Assumes that the RefSet is sorted by quality.
-
+        :param refset:
+            The current sorted RefSet, sorted by quality.
+        :param evaluator:
+            Function evaluator.
         :param i:
-            Index of first RefSet member for recombination
+            Index of first RefSet member for recombination.
         :param j:
-            Index of second RefSet member for recombination
+            Index of second RefSet member for recombination.
 
         :return: A new parameter vector.
         """
@@ -702,6 +704,10 @@ class DefaultRecombination:
         Get biased hyper-rectangle based on RefSet members ``i`` and ``j``.
         Assumes that the RefSet is sorted by quality.
 
+        :param refset:
+            The current sorted RefSet, sorted by quality.
+        :param evaluator:
+            Function evaluator.
         :param i:
             Index of first RefSet member for recombination
         :param j:

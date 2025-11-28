@@ -113,7 +113,7 @@ class FunctionEvaluator:
         """Reset the round function counter."""
         self.n_eval_round = 0
 
-    def _initialize_worker(self, local):
+    def _initialize_worker(self, local: threading.local):
         """Initialize worker threads."""
         # create a copy of the objective to maybe be thread-safe.
         local.objective = deepcopy(self.problem.objective)
@@ -172,7 +172,7 @@ class FunctionEvaluatorMT(FunctionEvaluator):
         )
 
     @staticmethod
-    def _evaluate_on_worker(local_and_x) -> float:
+    def _evaluate_on_worker(local_and_x: tuple[threading.local, np.ndarray]) -> float:
         """Task handler on worker threads."""
         local, x = local_and_x
         return local.objective(x)

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 from pypesto import Problem, Objective
 
@@ -53,7 +55,7 @@ problem_langermann = Problem(
     ub=np.array([10, 10]),
 )
 
-problem_info = {
+problem_info: dict[str, dict[str, Any]] = {
     "Shubert": {
         "global_best": -186.73090883102392,
         "problem": problem_shubert,

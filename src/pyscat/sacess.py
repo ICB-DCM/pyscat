@@ -218,7 +218,6 @@ class SacessOptimizer:
             Therefore, using :class:`pypesto.startpoint.CheckedStartpoints`
             with ``check_fval=True`` or ``check_grad=True`` is not recommended
             since it would create significant overhead.
-
         :return:
             Result object with optimized parameters in
             :attr:`pypesto.Result.optimize_result`.

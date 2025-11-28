@@ -33,8 +33,9 @@ def test_sacess_finds_minimum(problem_info):
     )
 
 
-def test_sacess_adaptation(capsys, problem):
+def test_sacess_adaptation(capsys, rosen_problem):
     """Test that adaptation step of the SACESS optimizer succeeds."""
+    problem = rosen_problem
     ess_init_args = get_default_ess_options(
         num_workers=2, dim=problem.dim, local_optimizer=False
     )

@@ -29,9 +29,10 @@ def test_ess_finds_minimum(problem_info):
     )
 
 
-def test_ess_multiprocess(problem):
+def test_ess_multiprocess(rosen_problem):
     from fides.constants import Options as FidesOptions
 
+    problem = rosen_problem
     # augment objective with parameter prior to check it's copyable
     #  https://github.com/ICB-DCM/pyPESTO/issues/1465
     #  https://github.com/ICB-DCM/pyPESTO/pull/1467

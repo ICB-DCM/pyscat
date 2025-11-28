@@ -5,7 +5,7 @@ import scipy
 
 
 @pytest.fixture
-def problem() -> pypesto.Problem:
+def rosen_problem() -> pypesto.Problem:
     objective = pypesto.objective.Objective(
         fun=scipy.optimize.rosen, grad=scipy.optimize.rosen_der
     )

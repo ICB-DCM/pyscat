@@ -25,7 +25,8 @@ import pytest
     ],
 )
 @pytest.mark.flaky(reruns=3)
-def test_ess(problem, local_optimizer, ess_type):
+def test_ess(rosen_problem, local_optimizer, ess_type):
+    problem = rosen_problem
     if ess_type == "ess":
         ess = ESSOptimizer(
             dim_refset=10,

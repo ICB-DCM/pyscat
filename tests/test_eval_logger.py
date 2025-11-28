@@ -12,6 +12,8 @@ import numpy as np
 import numpy.testing as npt
 import pickle
 from pyscat import SacessOptimizer, ESSOptimizer
+from typing import Any
+from pyscat.eval_logger import ThresholdSelector, TopKSelector
 
 
 def test_eval_logger_with_function_evaluator():
@@ -59,11 +61,11 @@ def test_eval_logger_with_function_evaluator_mt():
         xs = [np.random.default_rng().uniform(problem.lb, problem.ub) for _ in range(5)]
         fxs = evaluator.multiple(xs)
 
-        # Check that all evaluations were logged -- the order may differ due to multithreading
-        npt.assert_equal(len(el.evals), 5)
-        logged_dict = {tuple(x_logged): fx_logged for x_logged, fx_logged in el.evals}
-        for x, fx in zip(xs, fxs, strict=True):
-            npt.assert_array_equal(np.array(logged_dict[tuple(x)]), fx)
+    # Check that all evaluations were logged -- the order may differ due to multithreading
+    npt.assert_equal(len(el.evals), 5)
+    logged_dict = {tuple(x_logged): fx_logged for x_logged, fx_logged in el.evals}
+    for x, fx in zip(xs, fxs, strict=True):
+        npt.assert_array_equal(np.array(logged_dict[tuple(x)]), fx)
 
 
 def test_eval_logger_with_function_evaluator_mp():
@@ -122,3 +124,102 @@ def test_logger_sacess():
     best_x, best_fx = res.optimize_result[0].x, res.optimize_result[0].fval
     logged_dict = {tuple(x_logged): fx_logged for x_logged, fx_logged in el.evals}
     npt.assert_equal(logged_dict[tuple(best_x)], best_fx)
+
+
+class TestEvalLogger(EvalLogger):
+    """
+    EvalLogger variant that duplicates every logged evaluation into a separate
+    archive list that is never consumed by selectors. Useful in tests
+    where you need an immutable record of all evaluations.
+    """
+
+    def __init__(self, selector=None, _shared_evals=None, _archive=None):
+        # let base class create _manager and _shared_evals when appropriate
+        super().__init__(selector=selector, _shared_evals=_shared_evals)
+
+        if _shared_evals is None:
+            # EvalLogger created a Manager; create an archive list on the same manager
+            self._archive = self._manager.list()
+        else:
+            # on unpickle the archive will be provided via __setstate__;
+            # if not, fall back to a plain list (local-only)
+            self._archive = _archive
+
+    def log(self, x: Any, fx: float) -> None:
+        """
+        Append to the regular shared list
+        and also to the immutable archive list.
+        """
+        super().log(x, fx)
+        self._archive.append((x, fx))
+
+    @property
+    def evals_all(self):
+        """Return all archived evaluations (never consumed)."""
+        return list(self._archive)
+
+    def __getstate__(self):
+        return super().__getstate__() | {
+            "_archive": self._archive,
+        }
+
+    def __setstate__(self, state):
+        super().__setstate__(state)
+        self._archive = state.get("_archive")
+
+
+def test_logger_topk_ess():
+    problem = problem_schwefel
+    el = TestEvalLogger(TopKSelector(k=5, dim=problem.dim))
+
+    with el.attach(problem):
+        optimizer = ESSOptimizer(
+            dim_refset=10,
+            max_eval=100,
+            local_optimizer=pypesto.optimize.ScipyOptimizer(),
+        )
+        res = optimizer.minimize(problem=problem)
+
+    # Check that all evaluations were logged
+    assert len(el.evals_all) == res.optimize_result[0].n_fval
+
+    topk = el.selector.snapshot()
+    topk_fx = topk["fx"]
+    npt.assert_equal(len(topk_fx), 5)
+    # Check that top-k are sorted
+    for i in range(4):
+        assert topk_fx[i] <= topk_fx[i + 1]
+    # Check that top-k are indeed the best k
+    fxs_logged = [fx_logged for x_logged, fx_logged in el.evals_all]
+    fxs_logged.sort()
+    for i in range(5):
+        npt.assert_equal(topk_fx[i], fxs_logged[i])
+
+
+def test_logger_threshold_sacess():
+    problem = problem_schwefel
+
+    el = TestEvalLogger(ThresholdSelector(mode="abs", threshold=1e-2, dim=problem.dim))
+
+    with el.attach(problem):
+        optimizer = SacessOptimizer(
+            num_workers=4, max_walltime_s=2, sacess_loglevel=logging.WARNING
+        )
+        res = optimizer.minimize(problem=problem)
+
+    # Check that all evaluations were logged
+    assert len(el.evals_all) == sum(
+        worker_result.n_eval for worker_result in optimizer.worker_results
+    )
+    best_fx = res.optimize_result[0].fval
+    all_fval = [fx_logged for x_logged, fx_logged in el.evals_all]
+    assert best_fx == min(all_fval)
+
+    num_expected = sum(1 for fx in all_fval if fx <= best_fx + 1e-2)
+    snap = el.selector.snapshot()
+    snap_fx = snap["fx"]
+    npt.assert_equal(len(snap_fx), num_expected)
+
+    # Check that all checkpointed evaluations are below threshold
+    for fx in snap_fx:
+        assert fx <= best_fx + 1e-2

@@ -105,3 +105,24 @@ def test_prioritize_local_search_candidates():
     # distances: [1, 0, sqrt(2), sqrt(9 + 4)]
     expected = np.array([3, 2, 0, 1])
     npt.assert_array_equal(order, expected)
+
+
+def test_ess_is_deterministic(rosen_problem):
+    problem = rosen_problem
+
+    np.random.seed(0)
+    ess1 = ESSOptimizer(max_iter=10, dim_refset=15)
+    res1 = ess1.minimize(problem)
+    best_x1 = res1.optimize_result[0].x
+    best_fx1 = res1.optimize_result[0].fval
+
+    np.random.seed(0)
+    ess2 = ESSOptimizer(max_iter=10, dim_refset=15)
+    res2 = ess2.minimize(problem)
+    best_x2 = res2.optimize_result[0].x
+    best_fx2 = res2.optimize_result[0].fval
+
+    npt.assert_array_equal(best_x1, best_x2)
+    npt.assert_array_equal(best_fx1, best_fx2)
+    npt.assert_array_equal(ess1.refset.x, ess2.refset.x)
+    assert ess1.evaluator.n_eval == ess2.evaluator.n_eval

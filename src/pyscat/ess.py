@@ -726,8 +726,9 @@ class DefaultRecombination:
         c1, c2 = self.get_hyper_rect(refset, evaluator, i, j)
         return np.random.uniform(low=c1, high=c2, size=evaluator.problem.dim)
 
+    @staticmethod
     def get_hyper_rect(
-        self, refset: RefSet, evaluator: FunctionEvaluator, i: int, j: int
+        refset: RefSet, evaluator: FunctionEvaluator, i: int, j: int
     ) -> tuple[np.ndarray, np.ndarray]:
         """
         Get biased hyper-rectangle based on RefSet members ``i`` and ``j``.
@@ -851,8 +852,8 @@ class GoBeyondStrategy:
     See [Egea2009]_ algorithm 1 + section 3.4
     """
 
+    @staticmethod
     def execute(
-        self,
         x_best_children: np.ndarray,
         fx_best_children: np.ndarray,
         refset: RefSet,

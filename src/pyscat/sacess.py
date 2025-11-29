@@ -303,10 +303,7 @@ class SacessOptimizer:
 
             # wait for finish
             # collect results
-            self.worker_results = [
-                sacess_manager._result_queue.get()
-                for _ in range(self.num_workers)
-            ]
+            self.worker_results = sacess_manager.collect_worker_results()
             for p in worker_processes:
                 p.join()
 
@@ -569,6 +566,15 @@ class SacessManager:
                     )
                     self._rejections.value = 0
 
+    def send_result(self, result: SacessWorkerResult):
+        """Send the final result of a worker.
+
+        Must be called exactly once by each worker after finishing.
+
+        :param result: The result to be sent.
+        """
+        self._result_queue.put(result)
+
     def abort(self):
         """Abort the SACESS run."""
         with self._lock:
@@ -579,14 +585,25 @@ class SacessManager:
         with self._lock:
             return self._terminate.value
 
+    def collect_worker_results(
+        self,
+    ) -> list[SacessWorkerResult]:
+        """Collect results from all workers.
+
+        To be called only once.
+
+        :return: List of worker results.
+        """
+        return [self._result_queue.get() for _ in range(self._num_workers)]
+
 
 class SacessWorker:
-    """A SACESS worker.
+    """A saCeSS worker.
 
     Runs ESSs and exchanges information with a SacessManager.
     Corresponds to a worker process in [PenasGon2017]_.
 
-    :ivar _manager: The sacess manager this worker is working for.
+    :ivar _manager: The :class: `SacessManager` this worker is working for.
     :ivar _worker_idx: Index of this worker.
     :ivar _best_known_fx: Best objective value known to this worker
         (obtained on its own or received from the manager).
@@ -727,7 +744,7 @@ class SacessWorker:
                 n_local=0,
                 exit_flag=ESSExitFlag.ERROR,
             )
-        self._manager._result_queue.put(worker_result)
+        self._manager.send_result(worker_result)
 
         self.logger.debug(f"Final configuration: {self._ess_kwargs}")
 

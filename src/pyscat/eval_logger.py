@@ -117,7 +117,7 @@ class MethodInterceptorProxy:
 
     def __deepcopy__(self, memo):
         """
-        Deepcopy the proxy but keep the *original* handler reference.        .
+        Deepcopy the proxy but keep the *original* handler reference.
         """
         import copy
 
@@ -150,7 +150,6 @@ def temp_swap_attr(container: Any, attr_name: str, proxy: Any):
             delattr(container, attr_name)
         except Exception:
             logger.exception("delattr failed in temp_swap_attr cleanup")
-            pass
 
 
 class EvalLogger:
@@ -361,7 +360,7 @@ class EvalSelectorBase:
                 self.process(x, float(fx))
             except Exception:
                 logger.exception(f"Failed to process {item!r}")
-                pass
+
             consumed += 1
         return consumed
 
@@ -555,7 +554,7 @@ class ThresholdSelector(EvalSelectorBase):
         dim: int,
         mode: str,
         threshold: float,
-        path: str | None = None,
+        path: Path | str | None = None,
         dtype=float,
         _k: int = 100,
         _chunk_size: int = 64,

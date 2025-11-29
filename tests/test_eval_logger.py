@@ -155,6 +155,8 @@ class TestEvalLogger(EvalLogger):
     where you need an immutable record of all evaluations.
     """
 
+    __test__ = False
+
     def __init__(self, selector=None, _shared_evals=None, _archive=None):
         # let base class create _manager and _shared_evals when appropriate
         super().__init__(selector=selector, _shared_evals=_shared_evals)

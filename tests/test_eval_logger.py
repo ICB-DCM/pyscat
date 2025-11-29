@@ -137,9 +137,7 @@ def test_logger_sacess():
         res = optimizer.minimize(problem=problem)
 
     # Check that all evaluations were logged
-    assert len(el.evals) == sum(
-        worker_result.n_eval for worker_result in optimizer.worker_results
-    )
+    assert len(el.evals) == optimizer.n_eval_total
     # Check that best point is among logged evaluations
     best_x, best_fx = res.optimize_result[0].x, res.optimize_result[0].fval
     logged_dict = {
@@ -234,9 +232,7 @@ def test_logger_threshold_sacess():
         res = optimizer.minimize(problem=problem)
 
     # Check that all evaluations were logged
-    assert len(el.evals_all) == sum(
-        worker_result.n_eval for worker_result in optimizer.worker_results
-    )
+    assert len(el.evals_all) == optimizer.n_eval_total
     best_fx = res.optimize_result[0].fval
     all_fval = [fx_logged for x_logged, fx_logged in el.evals_all]
     assert best_fx == min(all_fval)

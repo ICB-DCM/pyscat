@@ -319,9 +319,7 @@ class SacessOptimizer:
         self._delete_tmpdir()
 
         walltime = time.time() - start_time
-        n_eval_total = sum(
-            worker_result.n_eval for worker_result in self.worker_results
-        )
+        n_eval_total = self.n_eval_total
         if len(result.optimize_result):
             logger.info(
                 f"{self.__class__.__name__} stopped after {walltime:3g}s "
@@ -335,6 +333,16 @@ class SacessOptimizer:
                 "a result."
             )
         return result
+
+    @property
+    def n_eval_total(self) -> int:
+        """Get the total number of objective evaluations.
+
+        Only available after :meth:`minimize` has been called and finished.
+        """
+        return sum(
+            worker_result.n_eval for worker_result in self.worker_results
+        )
 
     def _create_result(self, problem: Problem) -> pypesto.Result:
         """Create result object.

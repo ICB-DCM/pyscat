@@ -227,10 +227,6 @@ class SacessOptimizer:
             change.
         """
         start_time = time.time()
-        logger.debug(
-            f"Running {self.__class__.__name__} with {self.num_workers} "
-            f"workers: {self.ess_init_args} and {self.options}."
-        )
         ess_init_args = self.ess_init_args or get_default_ess_options(
             num_workers=self.num_workers,
             dim=problem.dim,
@@ -238,6 +234,10 @@ class SacessOptimizer:
             #  would be. So for now, we only use a local optimizer if we can
             #  use a gradient-based one.
             local_optimizer=problem.objective.has_grad,
+        )
+        logger.debug(
+            f"Running {self.__class__.__name__} with {self.num_workers} "
+            f"workers: {ess_init_args} and {self.options}."
         )
 
         logging_handler = logging.StreamHandler()

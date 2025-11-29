@@ -598,7 +598,7 @@ class SacessWorker:
         (may get updated during the self-adaptive step).
     :ivar _n_sent_solutions: Number of solutions sent to the Manager.
     :ivar _max_walltime_s: Walltime limit.
-    :ivar _logger: A Logger instance.
+    :ivar logger: A Logger instance.
     :ivar _loglevel: Logging level for sacess
     :ivar _ess_loglevel: Logging level for ESS runs
     :ivar _tmp_result_file: Path of a temporary file to be created.
@@ -626,7 +626,7 @@ class SacessWorker:
         self._start_time = None
         self._loglevel = loglevel
         self._ess_loglevel = ess_loglevel
-        self._logger = None
+        self.logger = None
         self._tmp_result_file = tmp_result_file
         self._refset = None
         self._options = options or SacessOptions()
@@ -641,11 +641,11 @@ class SacessWorker:
         #  that was most recently saved by _autosave
         last_saved_local_solution = -1
 
-        self._logger.setLevel(self._loglevel)
+        self.logger.setLevel(self._loglevel)
         # Set the manager logger to one created within the current process
-        self._manager._logger = self._logger
+        self._manager._logger = self.logger
 
-        self._logger.debug(
+        self.logger.debug(
             f"#{self._worker_idx} starting "
             f"({self._ess_kwargs}, {self._options})."
         )
@@ -686,7 +686,7 @@ class SacessWorker:
             self._maybe_adapt(problem)
 
             t_left = self._max_walltime_s - (time.time() - self._start_time)
-            self._logger.info(
+            self.logger.info(
                 f"sacess worker {self._worker_idx} iteration {ess.n_iter} "
                 f"(best: {self._best_known_fx}, "
                 f"n_eval: {ess.evaluator.n_eval}, "
@@ -713,7 +713,7 @@ class SacessWorker:
                     exit_flag=ess.exit_flag,
                 )
             except Exception as e:
-                self._logger.exception(
+                self.logger.exception(
                     f"Worker {self._worker_idx} failed to finalize: {e}"
                 )
         if worker_result is None:
@@ -729,7 +729,7 @@ class SacessWorker:
             )
         self._manager._result_queue.put(worker_result)
 
-        self._logger.debug(f"Final configuration: {self._ess_kwargs}")
+        self.logger.debug(f"Final configuration: {self._ess_kwargs}")
 
     def _setup_ess(self) -> ESSOptimizer:
         """Run ESS."""
@@ -741,9 +741,7 @@ class SacessWorker:
         )
 
         ess = ESSOptimizer(**ess_kwargs)
-        ess.logger = self._logger.getChild(
-            f"sacess-{self._worker_idx:02d}-ess"
-        )
+        ess.logger = self.logger.getChild(f"sacess-{self._worker_idx:02d}-ess")
         ess.logger.setLevel(self._ess_loglevel)
 
         ess._initialize_minimize(refset=self._refset)
@@ -754,7 +752,7 @@ class SacessWorker:
         """Cooperation step."""
         # try to obtain a new solution from manager
         recv_x, recv_fx = self._manager.get_best_solution()
-        self._logger.log(
+        self.logger.log(
             logging.DEBUG - 1,
             f"Worker {self._worker_idx} received solution {recv_fx} "
             f"(known best: {self._best_known_fx}).",
@@ -766,7 +764,7 @@ class SacessWorker:
                 raise AssertionError(
                     f"Received non-finite parameters {recv_x}."
                 )
-            self._logger.debug(
+            self.logger.debug(
                 f"Worker {self._worker_idx} received better solution "
                 f" {recv_fx}."
             )
@@ -796,12 +794,12 @@ class SacessWorker:
             )
             self._refset.sort()
             self._refset.resize(self._ess_kwargs["dim_refset"])
-            self._logger.debug(
+            self.logger.debug(
                 f"Updated settings on worker {self._worker_idx} "
                 f"to {self._ess_kwargs}"
             )
         else:
-            self._logger.debug(
+            self.logger.debug(
                 f"Worker {self._worker_idx} not adapting. "
                 f"Received: {self._n_received_solutions} <= {n_rcvd_thresh}, "
                 f"Sent: {self._n_sent_solutions}, "
@@ -813,7 +811,7 @@ class SacessWorker:
         rel_change = (
             abs((fx - self._best_known_fx) / fx) if fx != 0 else np.nan
         )
-        self._logger.debug(
+        self.logger.debug(
             f"Worker {self._worker_idx} maybe sending solution {fx}. "
             f"best known: {self._best_known_fx}, "
             f"rel change: {rel_change:.4g}, "
@@ -830,7 +828,7 @@ class SacessWorker:
                 > self._options.worker_acceptance_threshold
             )
         ):
-            self._logger.debug(
+            self.logger.debug(
                 f"Worker {self._worker_idx} sending solution {fx}."
             )
             self._n_sent_solutions += 1
@@ -882,20 +880,20 @@ class SacessWorker:
         # elapsed time
         if time.time() - self._start_time >= self._max_walltime_s:
             ess.exit_flag = ESSExitFlag.MAX_TIME
-            self._logger.debug(
+            self.logger.debug(
                 f"Max walltime ({self._max_walltime_s}s) exceeded."
             )
             return False
         # other reasons for termination (some worker failed, ...)
         if self._manager.aborted():
             ess.exit_flag = ESSExitFlag.ERROR
-            self._logger.debug("Manager requested termination.")
+            self.logger.debug("Manager requested termination.")
             return False
         return True
 
     def abort(self):
         """Send signal to abort."""
-        self._logger.error(f"Worker {self._worker_idx} aborting.")
+        self.logger.error(f"Worker {self._worker_idx} aborting.")
         # signal to manager
         self._manager.abort()
 
@@ -947,7 +945,7 @@ class SacessWorker:
         )
 
         t_save = time.time() - t_start
-        self._logger.debug(
+        self.logger.debug(
             f"Worker {self._worker_idx} autosave to {self._tmp_result_file} "
             f"took {t_save:.2f}s."
         )
@@ -964,7 +962,7 @@ def _run_worker(
 ):
     """Run the given SACESS worker.
 
-    Helper function as entrypoint for sacess worker processes.
+    Helper function as entrypoint for processes running `SacessWorker`s.
     """
     try:
         # different random seeds per process
@@ -972,17 +970,15 @@ def _run_worker(
 
         # Forward log messages to the logging process
         h = logging.handlers.QueueHandler(log_process_queue)
-        worker._logger = logging.getLogger(
+        worker.logger = logging.getLogger(
             multiprocessing.current_process().name
         )
-        worker._logger.addHandler(h)
+        worker.logger.addHandler(h)
 
         return worker.run(problem=problem)
     except Exception as e:
         with suppress(Exception):
-            worker._logger.exception(
-                f"Worker {worker._worker_idx} failed: {e}"
-            )
+            worker.logger.exception(f"Worker {worker._worker_idx} failed: {e}")
         worker.abort()
 
 
@@ -1025,7 +1021,7 @@ def get_default_ess_options(
     def dim_refset(x):
         return max(min_dimrefset, ceil((1 + sqrt(4 * dim * x)) / 2))
 
-    settings = [
+    settings: list[dict[str, Any]] = [
         # 1
         {
             "dim_refset": dim_refset(1),

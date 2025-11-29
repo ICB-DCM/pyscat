@@ -193,7 +193,8 @@ class TestEvalLogger(EvalLogger):
 
 def test_logger_topk_ess():
     problem = problem_schwefel
-    el = TestEvalLogger(TopKSelector(k=5, dim=problem.dim))
+    selector = TopKSelector(k=5, dim=problem.dim)
+    el = TestEvalLogger(selector=selector)
 
     with el.attach(problem):
         optimizer = ESSOptimizer(
@@ -206,7 +207,7 @@ def test_logger_topk_ess():
     # Check that all evaluations were logged
     assert len(el.evals_all) == res.optimize_result[0].n_fval
 
-    topk = el.selector.snapshot()
+    topk = selector.snapshot()
     topk_fx = topk["fx"]
     npt.assert_equal(len(topk_fx), 5)
     # Check that top-k are sorted
@@ -221,10 +222,8 @@ def test_logger_topk_ess():
 
 def test_logger_threshold_sacess():
     problem = problem_schwefel
-
-    el = TestEvalLogger(
-        ThresholdSelector(mode="abs", threshold=1e-2, dim=problem.dim)
-    )
+    selector = ThresholdSelector(mode="abs", threshold=1e-2, dim=problem.dim)
+    el = TestEvalLogger(selector=selector)
 
     with el.attach(problem):
         optimizer = SacessOptimizer(
@@ -241,7 +240,7 @@ def test_logger_threshold_sacess():
     assert best_fx == min(all_fval)
 
     num_expected = sum(1 for fx in all_fval if fx <= best_fx + 1e-2)
-    snap = el.selector.snapshot()
+    snap = selector.snapshot()
     snap_fx = snap["fx"]
     npt.assert_equal(len(snap_fx), num_expected)
 

@@ -197,7 +197,7 @@ class SacessOptimizer:
         self._tmpdir = Path(self._tmpdir).absolute()
         self._tmpdir.mkdir(parents=True, exist_ok=True)
         self.histories: list[pypesto.history.memory.MemoryHistory] | None = None
-        self.mp_ctx = get_context(mp_start_method)
+        self._mp_ctx = get_context(mp_start_method)
         self.options = options or SacessOptions()
 
     def minimize(
@@ -245,12 +245,12 @@ class SacessOptimizer:
             logging.Formatter("%(asctime)s %(name)s %(levelname)-8s %(message)s")
         )
         logging_thread = logging.handlers.QueueListener(
-            self.mp_ctx.Queue(-1), logging_handler
+            self._mp_ctx.Queue(-1), logging_handler
         )
 
         # shared memory manager to handle shared state
         # (simulates the sacess manager process)
-        with self.mp_ctx.Manager() as shmem_manager:
+        with self._mp_ctx.Manager() as shmem_manager:
             sacess_manager = SacessManager(
                 shmem_manager=shmem_manager,
                 ess_options=ess_init_args,
@@ -275,7 +275,7 @@ class SacessOptimizer:
             ]
             # launch worker processes
             worker_processes = [
-                self.mp_ctx.Process(
+                self._mp_ctx.Process(
                     name=f"{self.__class__.__name__}-worker-{i:02d}",
                     target=_run_worker,
                     args=(

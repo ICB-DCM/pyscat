@@ -9,5 +9,6 @@
    Getting Started <getting_started>
    eSS <ess_intro>
    saCeSS <sacess_intro>
+   How-to <howto>
    API reference <api>
    Development <development>

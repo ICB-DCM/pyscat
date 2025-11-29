@@ -39,6 +39,7 @@ __all__ = [
     "get_default_ess_options",
     "SacessFidesFactory",
     "SacessCmaFactory",
+    "SacessIpoptFactory",
     "SacessOptions",
 ]
 

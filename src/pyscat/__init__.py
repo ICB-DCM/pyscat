@@ -11,6 +11,7 @@ from .sacess import (
     SacessOptions,
     get_default_ess_options,
 )
+from .eval_logger import EvalLogger, ThresholdSelector, TopKSelector
 
 __all__ = [
     "ESSExitFlag",
@@ -21,4 +22,7 @@ __all__ = [
     "SacessOptimizer",
     "SacessOptions",
     "get_default_ess_options",
+    "EvalLogger",
+    "ThresholdSelector",
+    "TopKSelector",
 ]

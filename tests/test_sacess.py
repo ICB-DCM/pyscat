@@ -1,19 +1,22 @@
-from pyscat import (
-    get_default_ess_options,
-    SacessOptimizer,
-    SacessOptions,
-)
 import logging
-import pypesto
+
 import numpy as np
+import pypesto
+import pytest
 import scipy
 
+from pyscat import (
+    SacessOptimizer,
+    SacessOptions,
+    get_default_ess_options,
+)
 from pyscat.examples import problem_info
-import pytest
 
 
 @pytest.mark.flaky(reruns=3)
-@pytest.mark.parametrize("problem_info", problem_info.values(), ids=problem_info.keys())
+@pytest.mark.parametrize(
+    "problem_info", problem_info.values(), ids=problem_info.keys()
+)
 def test_sacess_finds_minimum(problem_info):
     expected_best_fx = problem_info["global_best"]
     problem = problem_info["problem"]
@@ -72,9 +75,12 @@ class FunctionOrError:
 
 
 def test_sacess_worker_error(capsys):
-    """Check that SacessOptimizer does not hang if an error occurs on a worker."""
+    """
+    Check that SacessOptimizer does not hang if an error occurs on a worker.
+    """
     objective = pypesto.objective.Objective(
-        fun=FunctionOrError(scipy.optimize.rosen), grad=scipy.optimize.rosen_der
+        fun=FunctionOrError(scipy.optimize.rosen),
+        grad=scipy.optimize.rosen_der,
     )
     problem = pypesto.Problem(
         objective=objective, lb=0 * np.ones((1, 2)), ub=1 * np.ones((1, 2))

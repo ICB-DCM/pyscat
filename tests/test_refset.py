@@ -24,12 +24,16 @@ class FakeEvaluator:
         self.rng = np.random.default_rng(seed)
 
     def multiple_random(self, n: int):
-        x = self.rng.uniform(self.problem.lb, self.problem.ub, (n, self.problem.dim))
+        x = self.rng.uniform(
+            self.problem.lb, self.problem.ub, (n, self.problem.dim)
+        )
         fx = np.sum(x**2, axis=1)  # simple convex objective
         return x, fx
 
     def single_random(self):
-        x = self.rng.uniform(self.problem.lb, self.problem.ub, self.problem.dim)
+        x = self.rng.uniform(
+            self.problem.lb, self.problem.ub, self.problem.dim
+        )
         fx = float(np.sum(x**2))
         return x, fx
 
@@ -88,16 +92,20 @@ def test_initialize_from_array_errors():
 
     x_diverse, fx_diverse = ev.multiple_random(3)  # too few points
     with pytest.raises(
-        ValueError, match="Cannot create RefSet with dimension 4 from only 3 points"
+        ValueError,
+        match="Cannot create RefSet with dimension 4 from only 3 points",
     ):
         rs.initialize_from_array(x_diverse=x_diverse, fx_diverse=fx_diverse)
 
     # mismatched lengths
     x_diverse, fx_diverse = ev.multiple_random(5)
     with pytest.raises(
-        ValueError, match="Lengths of `x_diverse` and `fx_diverse` do not match"
+        ValueError,
+        match="Lengths of `x_diverse` and `fx_diverse` do not match",
     ):
-        rs.initialize_from_array(x_diverse=x_diverse, fx_diverse=fx_diverse[:-1])
+        rs.initialize_from_array(
+            x_diverse=x_diverse, fx_diverse=fx_diverse[:-1]
+        )
 
 
 def test_sort_and_attributes():
@@ -163,7 +171,8 @@ def test_prune_too_close_replaces_close_points():
     # after pruning, the refset has to be sorted, the second point replaced,
     #   and the first and third points still present
     assert all(
-        np.not_equal(np.array([0.10000001, 0.10000001]), xx).all() for xx in rs.x
+        np.not_equal(np.array([0.10000001, 0.10000001]), xx).all()
+        for xx in rs.x
     )
     assert any(np.equal(np.array([0.1, 0.1]), xx).all() for xx in rs.x)
     assert any(np.equal(np.array([0.9, 0.9]), xx).all() for xx in rs.x)

@@ -1,6 +1,6 @@
-import pytest
-import pypesto
 import numpy as np
+import pypesto
+import pytest
 import scipy
 
 

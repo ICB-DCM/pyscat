@@ -1,10 +1,12 @@
 """Plotting functions for PyScat."""
 
 from __future__ import annotations
-import matplotlib.pyplot as plt
-import pypesto
+
 import warnings
+
+import matplotlib.pyplot as plt
 import numpy as np
+import pypesto
 
 
 def plot_ess_history(history: pypesto.HistoryBase):
@@ -129,9 +131,11 @@ def plot_sacess_history(
         lines = ax.step(
             x, y, ".-", where="post", label=f"worker {worker_idx}", alpha=0.8
         )
-        # Plot last point without marker, unless we actually had an improvement there.
-        # The time point of the overall last improvement is appended to all histories,
-        # even if redundant, so we can just skip the marker for the last point.
+        # Plot last point without marker, unless we actually had
+        # an improvement there.
+        # The time point of the overall last improvement is appended to
+        # all histories, even if redundant,
+        # so we can just skip the marker for the last point.
         for line in lines:
             line.set_markevery([True] * (len(x) - 1) + [False])
 

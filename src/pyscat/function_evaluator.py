@@ -7,10 +7,8 @@ import threading
 from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
-from typing import Optional
 
 import numpy as np
-
 from pypesto import Problem
 from pypesto.startpoint import StartpointMethod
 
@@ -30,10 +28,10 @@ class FunctionEvaluator:
 
     :ivar problem: The problem
     :ivar startpoint_method: Method for choosing feasible parameters
-    :ivar n_eval: Number of objective evaluations since construction or last call to
-        ``reset_counter``.
-    :ivar n_eval_round: Number of objective evaluations since construction or last
-        call to ``reset_counter`` or ``reset_round_counter``.
+    :ivar n_eval: Number of objective evaluations since construction
+        or last call to ``reset_counter``.
+    :ivar n_eval_round: Number of objective evaluations since construction
+        or last call to ``reset_counter`` or ``reset_round_counter``.
     """
 
     def __init__(
@@ -160,7 +158,7 @@ class FunctionEvaluatorMT(FunctionEvaluator):
         #  objectives thread-safe.
         self._thread_local: threading.local = threading.local()
         # The thread-pool to be used for parallel objective evaluations
-        self._executor: Optional[ThreadPoolExecutor] = (
+        self._executor: ThreadPoolExecutor | None = (
             ThreadPoolExecutor(
                 max_workers=self._n_threads,
                 thread_name_prefix=__name__,
@@ -172,7 +170,9 @@ class FunctionEvaluatorMT(FunctionEvaluator):
         )
 
     @staticmethod
-    def _evaluate_on_worker(local_and_x: tuple[threading.local, np.ndarray]) -> float:
+    def _evaluate_on_worker(
+        local_and_x: tuple[threading.local, np.ndarray],
+    ) -> float:
         """Task handler on worker threads."""
         local, x = local_and_x
         return local.objective(x)
@@ -218,8 +218,8 @@ class FunctionEvaluatorMP(FunctionEvaluator):
     def multiple(self, xs: Sequence[np.ndarray]) -> np.ndarray:
         """Evaluate objective at several points.
 
-        :param xs: Sequence of parameter vectors at which the objective is to be
-            evaluated.
+        :param xs: Sequence of parameter vectors at which the objective is to
+            be evaluated.
 
         :return: The objective function values in the same order as the inputs.
         """
@@ -245,7 +245,9 @@ def create_function_evaluator(
     returned.
     """
     if n_procs and n_threads:
-        raise ValueError("Only one of `n_procs` and `n_threads` may be specified.")
+        raise ValueError(
+            "Only one of `n_procs` and `n_threads` may be specified."
+        )
 
     if n_procs:
         return FunctionEvaluatorMP(

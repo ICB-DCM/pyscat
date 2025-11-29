@@ -3,8 +3,8 @@ import pytest
 
 from pyscat.function_evaluator import (
     FunctionEvaluator,
-    FunctionEvaluatorMT,
     FunctionEvaluatorMP,
+    FunctionEvaluatorMT,
     create_function_evaluator,
 )
 
@@ -28,7 +28,9 @@ class SimpleProblem:
 
 def test_counters(subtests):
     problem = SimpleProblem(
-        objective=objective_sum, startpoint_method=simple_startpoint_method, dim=2
+        objective=objective_sum,
+        startpoint_method=simple_startpoint_method,
+        dim=2,
     )
 
     for fe in (
@@ -52,7 +54,11 @@ def test_counters(subtests):
             fe.reset_counter()
             assert fe.n_eval == 0 and fe.n_eval_round == 0
 
-            xs = [np.array([1.0, 0.0]), np.array([0.5, 0.5]), np.array([2.0, 2.0])]
+            xs = [
+                np.array([1.0, 0.0]),
+                np.array([0.5, 0.5]),
+                np.array([2.0, 2.0]),
+            ]
             fxs = fe.multiple(xs)
             assert fxs.shape == (3,)
             assert fe.n_eval == fe.n_eval_round == len(xs)
@@ -62,7 +68,8 @@ def test_counters(subtests):
 
 
 def test_random_retries_until_finite():
-    # create a startpoint method that returns all-NaN initially, then valid points
+    # create a startpoint method that returns all-NaN initially,
+    #  then valid points
     call_count = 0
 
     def startpoint_method(n_starts=1, problem=None):
@@ -92,7 +99,9 @@ def test_random_retries_until_finite():
 
 def test_create_function_evaluator_choices_and_error():
     problem = SimpleProblem(
-        objective=objective_sum, startpoint_method=simple_startpoint_method, dim=2
+        objective=objective_sum,
+        startpoint_method=simple_startpoint_method,
+        dim=2,
     )
 
     with pytest.raises(ValueError, match="Only one of"):

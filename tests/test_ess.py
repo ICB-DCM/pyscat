@@ -1,18 +1,21 @@
+import numpy as np
+import numpy.testing as npt
+import pypesto
+import pytest
+from pypesto.optimize import FidesOptimizer
+
 from pyscat import (
     ESSOptimizer,
 )
+from pyscat.examples import problem_info
 from pyscat.function_evaluator import FunctionEvaluatorMP
 from pyscat.refset import RefSet
-from pypesto.optimize import FidesOptimizer
-import pypesto
-from pyscat.examples import problem_info
-import pytest
-import numpy as np
-import numpy.testing as npt
 
 
 @pytest.mark.flaky(reruns=3)
-@pytest.mark.parametrize("problem_info", problem_info.values(), ids=problem_info.keys())
+@pytest.mark.parametrize(
+    "problem_info", problem_info.values(), ids=problem_info.keys()
+)
 def test_ess_finds_minimum(problem_info):
     expected_best_fx = problem_info["global_best"]
     problem = problem_info["problem"]
@@ -85,13 +88,19 @@ def test_prioritize_local_search_candidates():
     npt.assert_array_equal(order, expected)
     # with local solutions
     order = ESSOptimizer.prioritize_local_search_candidates(
-        x_candidates, fx_candidates, local_solutions=local_solutions, balance=0.0
+        x_candidates,
+        fx_candidates,
+        local_solutions=local_solutions,
+        balance=0.0,
     )
     npt.assert_array_equal(order, expected)
 
     # balance = 1 -> ranking by distance to local solutions only
     order = ESSOptimizer.prioritize_local_search_candidates(
-        x_candidates, fx_candidates, local_solutions=local_solutions, balance=1.0
+        x_candidates,
+        fx_candidates,
+        local_solutions=local_solutions,
+        balance=1.0,
     )
     # distances: [1, 0, sqrt(2), sqrt(9 + 4)]
     expected = np.array([3, 2, 0, 1])

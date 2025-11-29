@@ -1,16 +1,18 @@
+import logging
+
+import pytest
+from pypesto.optimize import FidesOptimizer
+
 from pyscat import (
-    SacessCmaFactory,
-    SacessIpoptFactory,
-    SacessFidesFactory,
-    ESSOptimizer,
-    get_default_ess_options,
     ESSExitFlag,
+    ESSOptimizer,
+    SacessCmaFactory,
+    SacessFidesFactory,
+    SacessIpoptFactory,
     SacessOptimizer,
     SacessOptions,
+    get_default_ess_options,
 )
-import logging
-from pypesto.optimize import FidesOptimizer
-import pytest
 
 
 @pytest.mark.parametrize("ess_type", ["ess", "sacess"])
@@ -41,7 +43,9 @@ def test_ess(rosen_problem, local_optimizer, ess_type):
         # SACESS with 12 processes
         #  We use a higher number than reasonable to be more likely to trigger
         #  any potential race conditions (gh-1204)
-        ess_init_args = get_default_ess_options(num_workers=12, dim=problem.dim)
+        ess_init_args = get_default_ess_options(
+            num_workers=12, dim=problem.dim
+        )
         for x in ess_init_args:
             x["local_optimizer"] = local_optimizer
         ess = SacessOptimizer(

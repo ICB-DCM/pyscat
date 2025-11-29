@@ -1,19 +1,19 @@
 import logging
+import pickle
+from typing import Any
 
-import pypesto.optimize
-from pyscat.eval_logger import EvalLogger
-from pyscat.function_evaluator import (
-    FunctionEvaluator,
-    FunctionEvaluatorMT,
-    FunctionEvaluatorMP,
-)
-from pyscat.examples import problem_schwefel
 import numpy as np
 import numpy.testing as npt
-import pickle
-from pyscat import SacessOptimizer, ESSOptimizer
-from typing import Any
-from pyscat.eval_logger import ThresholdSelector, TopKSelector
+import pypesto.optimize
+
+from pyscat import ESSOptimizer, SacessOptimizer
+from pyscat.eval_logger import EvalLogger, ThresholdSelector, TopKSelector
+from pyscat.examples import problem_schwefel
+from pyscat.function_evaluator import (
+    FunctionEvaluator,
+    FunctionEvaluatorMP,
+    FunctionEvaluatorMT,
+)
 
 
 def test_eval_logger_with_function_evaluator():
@@ -23,7 +23,10 @@ def test_eval_logger_with_function_evaluator():
 
     with el.attach(problem):
         evaluator = FunctionEvaluator(problem)
-        xs = [np.random.default_rng().uniform(problem.lb, problem.ub) for _ in range(5)]
+        xs = [
+            np.random.default_rng().uniform(problem.lb, problem.ub)
+            for _ in range(5)
+        ]
         fxs = evaluator.multiple(xs)
 
     # Check that all evaluations were logged
@@ -39,9 +42,12 @@ def test_eval_logger_with_function_evaluator_survives_pickling():
     el = EvalLogger()
 
     with el.attach(problem):
-        problem = pickle.loads(pickle.dumps(problem))
+        problem = pickle.loads(pickle.dumps(problem))  # noqa S301
         evaluator = FunctionEvaluator(problem)
-        xs = [np.random.default_rng().uniform(problem.lb, problem.ub) for _ in range(5)]
+        xs = [
+            np.random.default_rng().uniform(problem.lb, problem.ub)
+            for _ in range(5)
+        ]
         fxs = evaluator.multiple(xs)
 
     # Check that all evaluations were logged
@@ -58,12 +64,18 @@ def test_eval_logger_with_function_evaluator_mt():
 
     with el.attach(problem):
         evaluator = FunctionEvaluatorMT(problem, 5)
-        xs = [np.random.default_rng().uniform(problem.lb, problem.ub) for _ in range(5)]
+        xs = [
+            np.random.default_rng().uniform(problem.lb, problem.ub)
+            for _ in range(5)
+        ]
         fxs = evaluator.multiple(xs)
 
-    # Check that all evaluations were logged -- the order may differ due to multithreading
+    # Check that all evaluations were logged
+    #  -- the order may differ due to multithreading
     npt.assert_equal(len(el.evals), 5)
-    logged_dict = {tuple(x_logged): fx_logged for x_logged, fx_logged in el.evals}
+    logged_dict = {
+        tuple(x_logged): fx_logged for x_logged, fx_logged in el.evals
+    }
     for x, fx in zip(xs, fxs, strict=True):
         npt.assert_array_equal(np.array(logged_dict[tuple(x)]), fx)
 
@@ -75,12 +87,18 @@ def test_eval_logger_with_function_evaluator_mp():
 
     with el.attach(problem):
         evaluator = FunctionEvaluatorMP(problem, 5)
-        xs = [np.random.default_rng().uniform(problem.lb, problem.ub) for _ in range(5)]
+        xs = [
+            np.random.default_rng().uniform(problem.lb, problem.ub)
+            for _ in range(5)
+        ]
         fxs = evaluator.multiple(xs)
 
-    # Check that all evaluations were logged -- the order may differ due to multiprocessing
+    # Check that all evaluations were logged
+    #  -- the order may differ due to multiprocessing
     npt.assert_equal(len(el.evals), 5)
-    logged_dict = {tuple(x_logged): fx_logged for x_logged, fx_logged in el.evals}
+    logged_dict = {
+        tuple(x_logged): fx_logged for x_logged, fx_logged in el.evals
+    }
     for x, fx in zip(xs, fxs, strict=True):
         npt.assert_array_equal(np.array(logged_dict[tuple(x)]), fx)
 
@@ -101,7 +119,9 @@ def test_logger_ess():
     assert len(el.evals) == res.optimize_result[0].n_fval
     # Check that best point is among logged evaluations
     best_x, best_fx = res.optimize_result[0].x, res.optimize_result[0].fval
-    logged_dict = {tuple(x_logged): fx_logged for x_logged, fx_logged in el.evals}
+    logged_dict = {
+        tuple(x_logged): fx_logged for x_logged, fx_logged in el.evals
+    }
     npt.assert_equal(logged_dict[tuple(best_x)], best_fx)
 
 
@@ -122,7 +142,9 @@ def test_logger_sacess():
     )
     # Check that best point is among logged evaluations
     best_x, best_fx = res.optimize_result[0].x, res.optimize_result[0].fval
-    logged_dict = {tuple(x_logged): fx_logged for x_logged, fx_logged in el.evals}
+    logged_dict = {
+        tuple(x_logged): fx_logged for x_logged, fx_logged in el.evals
+    }
     npt.assert_equal(logged_dict[tuple(best_x)], best_fx)
 
 
@@ -138,7 +160,8 @@ class TestEvalLogger(EvalLogger):
         super().__init__(selector=selector, _shared_evals=_shared_evals)
 
         if _shared_evals is None:
-            # EvalLogger created a Manager; create an archive list on the same manager
+            # EvalLogger created a Manager;
+            #  create an archive list on the same manager
             self._archive = self._manager.list()
         else:
             # on unpickle the archive will be provided via __setstate__;
@@ -199,7 +222,9 @@ def test_logger_topk_ess():
 def test_logger_threshold_sacess():
     problem = problem_schwefel
 
-    el = TestEvalLogger(ThresholdSelector(mode="abs", threshold=1e-2, dim=problem.dim))
+    el = TestEvalLogger(
+        ThresholdSelector(mode="abs", threshold=1e-2, dim=problem.dim)
+    )
 
     with el.attach(problem):
         optimizer = SacessOptimizer(

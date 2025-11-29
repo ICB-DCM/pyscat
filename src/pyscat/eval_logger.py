@@ -7,21 +7,21 @@ deep-copying, and pickling.
 """
 
 from __future__ import annotations
-from pathlib import Path
 
-import numpy as np
 import functools
-from contextlib import contextmanager
-from multiprocessing import Manager
-from multiprocessing.managers import ListProxy
-from typing import Any, Callable
+import heapq
+import logging
 import os
 import tempfile
 import threading
-import heapq
-from typing import Optional, Sequence
-import logging
+from collections.abc import Callable, Sequence
+from contextlib import contextmanager
+from multiprocessing import Manager
+from multiprocessing.managers import ListProxy
+from pathlib import Path
+from typing import Any
 
+import numpy as np
 import pypesto.ensemble
 
 __all__ = ["EvalLogger", "TopKSelector", "ThresholdSelector"]
@@ -50,7 +50,9 @@ class MethodInterceptorProxy:
 
         for attr in self.own_attrs:
             if hasattr(obj, attr):
-                raise ValueError(f"Cannot proxy object with attribute {attr!r}")
+                raise ValueError(
+                    f"Cannot proxy object with attribute {attr!r}"
+                )
 
         self._obj = obj
         self._method_name = method_name
@@ -92,12 +94,12 @@ class MethodInterceptorProxy:
     def __call__(self, *args, **kwargs):
         # support calling the proxy itself (intercept __call__)
         if self._method_name == "__call__":
-            orig = getattr(self._obj, "__call__", self._obj)
+            orig = getattr(self._obj, "__call__", self._obj)  # noqa B004
             return self._handler(orig, *args, **kwargs)
 
         # otherwise, if underlying object is callable and not intercepted,
         #  call it
-        orig = getattr(self._obj, "__call__", None)
+        orig = getattr(self._obj, "__call__", None)  # noqa B004
         if callable(orig):
             return orig(*args, **kwargs)
         raise TypeError(f"{type(self).__name__} object is not callable")
@@ -122,7 +124,9 @@ class MethodInterceptorProxy:
         if id(self) in memo:
             return memo[id(self)]
         obj_copy = copy.deepcopy(self._obj, memo)
-        proxy_copy = MethodInterceptorProxy(obj_copy, self._method_name, self._handler)
+        proxy_copy = MethodInterceptorProxy(
+            obj_copy, self._method_name, self._handler
+        )
         memo[id(self)] = proxy_copy
         return proxy_copy
 
@@ -163,10 +167,28 @@ class EvalLogger:
         _shared_lock: threading.Lock = None,
     ):
         """
-        If no `shared_evals` is provided, create a private Manager and a manager.list()
-        that will be used to store evaluations. The Manager object is kept
-        on the instance for the process lifetime but is excluded from pickling.
+        Initialize.
+
+        :param selector:
+            Optional selector / handler for evaluations.
+            See :class:`TopKSelector` and :class:`ThresholdSelector`.
+            If not provided, all objective evaluations will be kept in memory.
         """
+        if (
+            _shared_evals is None
+            and _shared_lock is not None
+            or _shared_evals is not None
+            and _shared_lock is None
+        ):
+            raise ValueError(
+                "`_shared_evals` and `_shared_lock` must both be provided "
+                "or both be None."
+            )
+
+        # If no `shared_evals` is provided, create a private Manager
+        #  and a manager.list() that will be used to store evaluations.
+        #  The Manager object is kept on the instance for the process
+        #  lifetime but is excluded from pickling. Same for the selector.
         if _shared_evals is None:
             self._manager = Manager()
             self._shared_evals = self._manager.list()
@@ -192,7 +214,9 @@ class EvalLogger:
         if self.selector is not None and not self.selector.is_running:
             # start as late as possible to avoid issues with forking processes
             #  elsewhere
-            self.selector.start_background_ingest(self._shared_evals, self._shared_lock)
+            self.selector.start_background_ingest(
+                self._shared_evals, self._shared_lock
+            )
 
         with self._shared_lock:
             self._shared_evals.append((x, fx))
@@ -225,13 +249,18 @@ class EvalLogger:
         if self.selector is not None:
             self.selector.stop_background_ingest()
             # ingest any remaining entries
-            self.selector.ingest_from_shared(self._shared_evals, self._shared_lock)
+            self.selector.ingest_from_shared(
+                self._shared_evals, self._shared_lock
+            )
 
     def __getstate__(self):
         """
         Pickle everything except the Manager and selector.
         """
-        return {"_shared_evals": self._shared_evals, "_shared_lock": self._shared_lock}
+        return {
+            "_shared_evals": self._shared_evals,
+            "_shared_lock": self._shared_lock,
+        }
 
     def __setstate__(self, state):
         """Restore."""
@@ -262,7 +291,7 @@ class EvalSelectorBase:
         Initialize the selector.
 
         :param dim: Problem dimension (length of parameter vector).
-        :param path: Optional filesystem path used by subclasses for persistence.
+        :param path: Optional filesystem path used by subclasses.
         :param dtype: Numpy dtype used for internal numeric storage.
         """
         # TODO: consider making that easier to use and inferring dim from first
@@ -285,7 +314,9 @@ class EvalSelectorBase:
         """
         arr = np.asarray(x, dtype=self.dtype)
         if arr.shape != (self.dim,):
-            raise ValueError(f"x must have shape ({self.dim},), got {arr.shape}")
+            raise ValueError(
+                f"x must have shape ({self.dim},), got {arr.shape}"
+            )
         return np.ascontiguousarray(arr)
 
     @staticmethod
@@ -304,7 +335,7 @@ class EvalSelectorBase:
         return self._bg_thread is not None
 
     def ingest_from_shared(
-        self, shared_list: ListProxy, shared_lock: Optional[threading.Lock]
+        self, shared_list: ListProxy, shared_lock: threading.Lock | None
     ) -> int:
         """
         Consume entries from a shared list.
@@ -329,13 +360,16 @@ class EvalSelectorBase:
                 x, fx = item
                 self.process(x, float(fx))
             except Exception:
-                # ignore malformed items / add errors
+                logger.exception(f"Failed to process {item!r}")
                 pass
             consumed += 1
         return consumed
 
     def start_background_ingest(
-        self, shared_list: ListProxy, shared_lock: threading.Lock, interval: float = 1.0
+        self,
+        shared_list: ListProxy,
+        shared_lock: threading.Lock,
+        interval: float = 1.0,
     ):
         """
         Start a daemon thread that periodically ingests from the shared list.
@@ -468,7 +502,9 @@ class TopKSelector(EvalSelectorBase):
             mask = self._valid
             order = [
                 slot
-                for _, _, slot in sorted(self._heap, key=lambda t: (-t[0], t[1]))
+                for _, _, slot in sorted(
+                    self._heap, key=lambda t: (-t[0], t[1])
+                )
                 if mask[slot]
             ]
             return {
@@ -477,7 +513,8 @@ class TopKSelector(EvalSelectorBase):
                 "ts": np.ascontiguousarray(self._ts[mask][order]),
             }
 
-    # TODO: snapshotting frequency -- who controls? after how many ingests? seconds? ...?
+    # TODO: snapshotting frequency -- who controls?
+    #   after how many ingests? seconds? ...?
     def save(self):
         """Save the stored entries as numpy ``.npz`` file."""
         if self.path is None:
@@ -488,7 +525,9 @@ class TopKSelector(EvalSelectorBase):
         # first save to a temp file to avoid corrupted files on crashes,
         #  then atomically rename
         dirpath = self.path.parent
-        fd, tmpname = tempfile.mkstemp(prefix="._topk_", suffix=".npz", dir=dirpath)
+        fd, tmpname = tempfile.mkstemp(
+            prefix="._topk_", suffix=".npz", dir=dirpath
+        )
         os.close(fd)
         try:
             np.savez(tmpname, **snapshot)
@@ -516,7 +555,7 @@ class ThresholdSelector(EvalSelectorBase):
         dim: int,
         mode: str,
         threshold: float,
-        path: Optional[str] = None,
+        path: str | None = None,
         dtype=float,
         _k: int = 100,
         _chunk_size: int = 64,
@@ -695,7 +734,9 @@ class ThresholdSelector(EvalSelectorBase):
         # first save to a temp file to avoid corrupted files on crashes,
         #  then atomically rename
         dirpath = self.path.parent
-        fd, tmpname = tempfile.mkstemp(prefix="._thresh_", suffix=".npz", dir=dirpath)
+        fd, tmpname = tempfile.mkstemp(
+            prefix="._thresh_", suffix=".npz", dir=dirpath
+        )
         os.close(fd)
         try:
             np.savez(tmpname, **snapshot)

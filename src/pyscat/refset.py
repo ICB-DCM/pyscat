@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 
@@ -27,8 +27,8 @@ class RefSet:
         self,
         dim: int,
         evaluator: FunctionEvaluator,
-        x: Optional[np.ndarray] = None,
-        fx: Optional[np.ndarray] = None,
+        x: np.ndarray | None = None,
+        fx: np.ndarray | None = None,
     ):
         """Construct.
 
@@ -93,14 +93,18 @@ class RefSet:
         x_diverse, fx_diverse = self.evaluator.multiple_random(n_diverse)
         self.initialize_from_array(x_diverse=x_diverse, fx_diverse=fx_diverse)
 
-    def initialize_from_array(self, x_diverse: np.ndarray, fx_diverse: np.ndarray):
+    def initialize_from_array(
+        self, x_diverse: np.ndarray, fx_diverse: np.ndarray
+    ):
         """Create an initial reference set using the provided points.
 
         Populate half of the RefSet using the best given solutions and fill the
         rest with a random selection from the remaining points.
         """
         if len(x_diverse) != len(fx_diverse):
-            raise ValueError("Lengths of `x_diverse` and `fx_diverse` do not match.")
+            raise ValueError(
+                "Lengths of `x_diverse` and `fx_diverse` do not match."
+            )
         if self.dim > len(x_diverse):
             raise ValueError(
                 "Cannot create RefSet with dimension "
@@ -212,7 +216,9 @@ class RefSet:
             new_x, new_fx = self.evaluator.multiple_random(new_dim - self.dim)
             self.fx = np.append(self.fx, new_fx)
             self.x = np.vstack((self.x, new_x))
-            self.n_stuck = np.append(self.n_stuck, np.zeros(shape=(new_dim - self.dim)))
+            self.n_stuck = np.append(
+                self.n_stuck, np.zeros(shape=(new_dim - self.dim))
+            )
             for attribute_name, attribute_values in self.attributes.items():
                 self.attributes[attribute_name] = np.append(
                     attribute_values, np.zeros(shape=(new_dim - self.dim))

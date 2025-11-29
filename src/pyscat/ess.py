@@ -9,10 +9,10 @@ from __future__ import annotations
 import enum
 import logging
 import time
-from typing import Protocol, Callable, Sequence
+from collections.abc import Callable, Sequence
+from typing import Protocol
 
 import numpy as np
-
 import pypesto.optimize
 from pypesto import OptimizerResult, Problem
 from pypesto.history import MemoryHistory
@@ -132,7 +132,9 @@ class ESSOptimizer:
         local_n1: int = 1,
         local_n2: int = 10,
         balance: float = 0.5,
-        local_optimizer: pypesto.optimize.Optimizer | OptimizerFactory | None = None,
+        local_optimizer: pypesto.optimize.Optimizer
+        | OptimizerFactory
+        | None = None,
         max_eval=None,
         n_diverse: int = None,
         n_procs=None,
@@ -159,10 +161,11 @@ class ESSOptimizer:
             iteration. Ignored if ``local_optimizer=None``.
         :param local_optimizer:
             Local optimizer for refinement, or a callable that creates an
-            :class:`pypesto.optimize.Optimizer` or ``None`` to skip local searches.
+            :class:`pypesto.optimize.Optimizer` or ``None`` to skip local
+            searches.
             In case of a callable, it will be called with the keyword arguments
-            `max_walltime_s` and `max_eval`, which should be passed to the optimizer
-            (if supported) to honor the overall budget.
+            `max_walltime_s` and `max_eval`, which should be passed to the
+            optimizer (if supported) to honor the overall budget.
             See :class:`SacessFidesFactory` for an example.
         :param n_diverse:
             Number of samples to choose from to construct the initial RefSet
@@ -198,7 +201,8 @@ class ESSOptimizer:
         if max_eval is None and max_walltime_s is None and max_iter is None:
             # in this case, we'd run forever
             raise ValueError(
-                "Either `max_iter`, `max_eval` or `max_walltime_s` have to be provided."
+                "Either `max_iter`, `max_eval` or `max_walltime_s` "
+                "have to be provided."
             )
         if max_eval is None:
             max_eval = np.inf
@@ -216,7 +220,9 @@ class ESSOptimizer:
         self.local_optimizer = local_optimizer
         self.n_diverse: int = n_diverse
         if n_procs is not None and n_threads is not None:
-            raise ValueError("`n_procs` and `n_threads` are mutually exclusive.")
+            raise ValueError(
+                "`n_procs` and `n_threads` are mutually exclusive."
+            )
         self.n_procs: int | None = n_procs
         self.n_threads: int | None = n_threads
         self.balance: float = balance
@@ -227,7 +233,9 @@ class ESSOptimizer:
         self.local_only_best_sol: bool = False
         self.max_walltime_s = max_walltime_s
         self._initialize()
-        self.logger = logging.getLogger(f"{self.__class__.__name__}-{id(self)}")
+        self.logger = logging.getLogger(
+            f"{self.__class__.__name__}-{id(self)}"
+        )
         self._result_includes_refset = result_includes_refset
 
     def _initialize(self):
@@ -269,12 +277,16 @@ class ESSOptimizer:
         if (refset is None and problem is None) or (
             refset is not None and problem is not None
         ):
-            raise ValueError("Exactly one of `problem` or `refset` has to be provided.")
+            raise ValueError(
+                "Exactly one of `problem` or `refset` has to be provided."
+            )
 
         # generate initial RefSet if not provided
         if refset is None:
             if self.dim_refset is None:
-                raise ValueError("Either refset or dim_refset have to be provided.")
+                raise ValueError(
+                    "Either refset or dim_refset have to be provided."
+                )
             # [EgeaMar2010]_ 2.1
             self.n_diverse = self.n_diverse or 10 * problem.dim
             self.evaluator = create_function_evaluator(
@@ -290,9 +302,11 @@ class ESSOptimizer:
             self.refset = refset
 
         self.evaluator = self.refset.evaluator
-        self.x_best = np.full(shape=(self.evaluator.problem.dim,), fill_value=np.nan)
+        self.x_best = np.full(
+            shape=(self.evaluator.problem.dim,), fill_value=np.nan
+        )
         # initialize global best from initial refset
-        for x, fx in zip(self.refset.x, self.refset.fx):
+        for x, fx in zip(self.refset.x, self.refset.fx, strict=False):
             self._maybe_update_global_best(x, fx)
 
         self._recombination_strategy = DefaultRecombination()
@@ -345,7 +359,9 @@ class ESSOptimizer:
         )
         for i in range(self.refset.dim):
             # update overall best after intensification?
-            self._maybe_update_global_best(x_best_children[i], fx_best_children[i])
+            self._maybe_update_global_best(
+                x_best_children[i], fx_best_children[i]
+            )
 
         # Maybe perform a local search
         if self.local_optimizer is not None and self._keep_going():
@@ -461,7 +477,8 @@ class ESSOptimizer:
         # first local search?
         elif self.n_iter == self.local_n1:
             self.logger.debug(
-                f"First local search from best point due to local_n1={self.local_n1}."
+                f"First local search from best point due to "
+                f"local_n1={self.local_n1}."
             )
             local_search_x0_fx0_candidates = ((self.x_best, self.fx_best),)
         elif (
@@ -469,16 +486,21 @@ class ESSOptimizer:
             and self.n_iter - self.last_local_search_niter >= self.local_n2
         ):
             priority_order = self.prioritize_local_search_candidates(
-                x_best_children, fx_best_children, self.local_solutions, self.balance
+                x_best_children,
+                fx_best_children,
+                self.local_solutions,
+                self.balance,
             )
             local_search_x0_fx0_candidates = (
-                (x_best_children[i], fx_best_children[i]) for i in priority_order
+                (x_best_children[i], fx_best_children[i])
+                for i in priority_order
             )
         else:
             return
 
         # actual local search
-        # repeat until a finite value is found, or we don't have any startpoints left
+        # repeat until a finite value is found,
+        #  or we don't have any startpoints left
         for (
             local_search_x0,
             local_search_fx0,
@@ -541,7 +563,8 @@ class ESSOptimizer:
                 (
                     min(
                         np.linalg.norm(
-                            y_i - optimizer_result.x[optimizer_result.free_indices]
+                            y_i
+                            - optimizer_result.x[optimizer_result.free_indices]
                         )
                         for optimizer_result in local_solutions
                     )
@@ -650,7 +673,8 @@ class ESSOptimizer:
         ):
             self.logger.info(
                 f"-- Final ESS fval after {self.n_iter} iterations, "
-                f"{self.evaluator.n_eval} function evaluations: {self.fx_best}. "
+                f"{self.evaluator.n_eval} function evaluations: "
+                f"{self.fx_best}. "
                 f"Exit flag: {self.exit_flag.name}. "
                 f"Num local solutions: {len(self.local_solutions)}."
             )
@@ -664,7 +688,12 @@ class RecombinationStrategy(Protocol):
         evaluator: FunctionEvaluator,
         should_continue: Callable[[], bool] | None = None,
     ) -> tuple[np.ndarray, np.ndarray]:
-        """Return (y, fy) arrays for the next generation (shape: refset.dim x problem.dim)."""
+        """
+        Combine solutions from the RefSet to create the next generation.
+
+        :return: (y, fy) arrays for the next generation
+            (shape: refset.dim x problem.dim).
+        """
 
 
 class DefaultRecombination:
@@ -766,7 +795,9 @@ class DefaultRecombination:
             # build children from i combined with all other j != i
             xs_new = np.vstack(
                 tuple(
-                    self.combine(refset, evaluator, i, j) for j in range(dim) if j != i
+                    self.combine(refset, evaluator, i, j)
+                    for j in range(dim)
+                    if j != i
                 )
             )
             fxs_new = evaluator.multiple(xs_new)
@@ -794,7 +825,8 @@ class IntensificationStrategy(Protocol):
         for the next generation.
 
         :param x_best_children:
-            Next generation parameter vectors (shape: refset.dim x problem.dim).
+            Next generation parameter vectors
+            (shape: refset.dim x problem.dim).
             Will be updated in-place.
         :param fx_best_children:
             Next generation objective values (shape: refset.dim).

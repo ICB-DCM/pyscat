@@ -5,13 +5,17 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
-from pypesto import Problem, Objective
+from pypesto import Objective, Problem
 
 
 def shubert(x: np.ndarray) -> float:
     # https://www.sfu.ca/~ssurjano/shubert.html
-    sum1 = np.sum([i * np.cos((i + 1) * x[0] + i) for i in range(1, 6)], axis=0)
-    sum2 = np.sum([i * np.cos((i + 1) * x[1] + i) for i in range(1, 6)], axis=0)
+    sum1 = np.sum(
+        [i * np.cos((i + 1) * x[0] + i) for i in range(1, 6)], axis=0
+    )
+    sum2 = np.sum(
+        [i * np.cos((i + 1) * x[1] + i) for i in range(1, 6)], axis=0
+    )
     return sum1 * sum2
 
 

@@ -1,5 +1,6 @@
 import numpy as np
 from pypesto.history.memory import MemoryHistory
+
 from pyscat.plot import monotonic_history
 
 

@@ -107,17 +107,25 @@ def test_prioritize_local_search_candidates():
     npt.assert_array_equal(order, expected)
 
 
-def test_ess_is_deterministic(rosen_problem):
+@pytest.mark.parametrize(
+    "n_procs,n_threads", [(None, None), (2, None), (None, 2)]
+)
+def test_ess_is_deterministic(rosen_problem, n_procs, n_threads):
+    """Test that ESSOptimizer is deterministic given the same random seed."""
     problem = rosen_problem
 
     np.random.seed(0)
-    ess1 = ESSOptimizer(max_iter=10, dim_refset=15)
+    ess1 = ESSOptimizer(
+        max_iter=10, dim_refset=15, n_procs=n_procs, n_threads=n_threads
+    )
     res1 = ess1.minimize(problem)
     best_x1 = res1.optimize_result[0].x
     best_fx1 = res1.optimize_result[0].fval
 
     np.random.seed(0)
-    ess2 = ESSOptimizer(max_iter=10, dim_refset=15)
+    ess2 = ESSOptimizer(
+        max_iter=10, dim_refset=15, n_procs=n_procs, n_threads=n_threads
+    )
     res2 = ess2.minimize(problem)
     best_x2 = res2.optimize_result[0].x
     best_fx2 = res2.optimize_result[0].fval

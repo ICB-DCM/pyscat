@@ -1,7 +1,7 @@
 """Enhanced Scatter Search.
 
-See papers on ESS :footcite:p:`EgeaBal2009,EgeaMar2010`,
-CESS :footcite:p:`VillaverdeEge2012`, and saCeSS :footcite:p:`PenasGon2017`.
+See papers on eSS :footcite:p:`EgeaBal2009,EgeaMar2010`,
+CeSS :footcite:p:`VillaverdeEge2012`, and saCeSS :footcite:p:`PenasGon2017`.
 """
 
 from __future__ import annotations
@@ -59,7 +59,7 @@ class OptimizerFactory(Protocol):
 
 
 class ESSOptimizer:
-    """Enhanced Scatter Search (ESS) global optimization.
+    """Enhanced Scatter Search (eSS) global optimization.
 
     Scatter search is a meta-heuristic for global optimization. A set of points
     (the reference set, RefSet) is iteratively adapted to explore the parameter
@@ -89,7 +89,7 @@ class ESSOptimizer:
     Hyperparameters
     ---------------
 
-    Various hyperparameters control the behavior of ESS.
+    Various hyperparameters control the behavior of eSS.
     Initialization is controlled by ``dim_refset`` and ``n_diverse``.
     Local optimizations are controlled by ``local_optimizer``, ``local_n1``,
     ``local_n2``, and ``balance``.
@@ -116,7 +116,6 @@ class ESSOptimizer:
     parallelized using multiprocessing or multithreading by passing a value
     >1 for ``n_procs`` or ``n_threads``, respectively.
 
-
     .. seealso::
 
        :class:`SacessOptimizer`
@@ -142,16 +141,16 @@ class ESSOptimizer:
         max_walltime_s=None,
         result_includes_refset: bool = False,
     ):
-        r"""Construct new ESS instance.
+        r"""Initialize.
 
         For plausible values of hyperparameters,
         see :footcite:t:`VillaverdeEge2012`.
 
         :param dim_refset:
-            Size of the ReferenceSet. Note that in every iteration at least
+            Size of the RefSet. Note that in every iteration at least
             ``dim_refset**2 - dim_refset`` function evaluations will occur.
         :param max_iter:
-            Maximum number of ESS iterations.
+            Maximum number of eSS iterations.
         :param local_n1:
             Minimum number of iterations before first local search.
             Ignored if ``local_optimizer=None``.
@@ -267,7 +266,7 @@ class ESSOptimizer:
         problem: Problem = None,
         refset: RefSet | None = None,
     ):
-        """Initialize for optimizations.
+        """(Re-)initialize for optimizations.
 
         Create initial refset, start timer, ... .
         """
@@ -672,7 +671,7 @@ class ESSOptimizer:
             formatter={"float": lambda x: f"{x:.3g}"},
         ):
             self.logger.info(
-                f"-- Final ESS fval after {self.n_iter} iterations, "
+                f"-- Final eSS fval after {self.n_iter} iterations, "
                 f"{self.evaluator.n_eval} function evaluations: "
                 f"{self.fx_best}. "
                 f"Exit flag: {self.exit_flag.name}. "

@@ -60,7 +60,7 @@ class RefSet:
             self.x = x
             self.fx = fx
 
-        self.n_stuck = np.zeros(shape=[dim])
+        self.n_stuck = np.zeros(shape=[dim], dtype=int)
         self.attributes: dict[Any, np.ndarray] = {}
 
     def __repr__(self):
@@ -186,7 +186,7 @@ class RefSet:
         """
         if len(values) != self.dim:
             raise ValueError("Attribute length does not match refset length.")
-        self.attributes[name] = values
+        self.attributes[name] = np.array(values)
 
     def resize(self, new_dim: int):
         """
@@ -213,15 +213,15 @@ class RefSet:
             self.dim = new_dim
         else:
             # grow
-            new_x, new_fx = self.evaluator.multiple_random(new_dim - self.dim)
+            n_new = new_dim - self.dim
+            new_x, new_fx = self.evaluator.multiple_random(n_new)
             self.fx = np.append(self.fx, new_fx)
             self.x = np.vstack((self.x, new_x))
-            self.n_stuck = np.append(
-                self.n_stuck, np.zeros(shape=(new_dim - self.dim))
-            )
+            self.n_stuck = np.append(self.n_stuck, np.zeros(shape=(n_new)))
             for attribute_name, attribute_values in self.attributes.items():
                 self.attributes[attribute_name] = np.append(
-                    attribute_values, np.zeros(shape=(new_dim - self.dim))
+                    attribute_values,
+                    np.zeros(shape=n_new, dtype=attribute_values.dtype),
                 )
             self.dim = new_dim
             self.sort()

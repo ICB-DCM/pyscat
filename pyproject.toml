@@ -63,7 +63,7 @@ lint.extend-select = [
 ]
 lint.ignore = []
 lint.extend-fixable = [
-    "E501"
+    "E501", # line too long, unsafe
 ]
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = [

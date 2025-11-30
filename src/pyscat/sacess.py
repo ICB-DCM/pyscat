@@ -53,9 +53,9 @@ class SacessOptimizer:
     `Self-Adaptive Cooperative Enhanced Scatter Search` (SaCeSS) algorithm
     presented in :footcite:t:`PenasGon2017`. This is a meta-heuristic for
     global optimization. Multiple processes (`workers`) run
-    :class:`enhanced scatter searches (ESSs) <ESSOptimizer>` in parallel.
+    :class:`enhanced scatter searches (eSSs) <ESSOptimizer>` in parallel.
     After each ESS iteration, depending on the outcome, there is a chance
-    of exchanging good parameters, and changing ESS hyperparameters to those of
+    of exchanging good parameters, and changing eSS hyperparameters to those of
     the most promising worker. See :footcite:t:`PenasGon2017` for details.
 
     :class:`SacessOptimizer` can be used with or without a local optimizer, but
@@ -64,15 +64,13 @@ class SacessOptimizer:
     :ivar histories:
         List of the histories of the best values/parameters
         found by each worker. (Monotonously decreasing objective values.)
-        See :func:`pypesto.visualize.optimizer_history.sacess_history` for
-        visualization.
+        See :func:`pyscat.plot.plot_sacess_history` for visualization.
 
     A basic example using :class:`SacessOptimizer` to minimize the Rosenbrock
     function:
 
-    >>> from pypesto.optimize import SacessOptimizer
-    >>> from pypesto.problem import Problem
-    >>> from pypesto.objective import Objective
+    >>> from pyscat import SacessOptimizer
+    >>> from pypesto import Problem, Objective
     >>> import scipy as sp
     >>> import numpy as np
     >>> import logging
@@ -121,10 +119,10 @@ class SacessOptimizer:
         :param ess_init_args:
             List of argument dictionaries passed to
             :func:`ESSOptimizer.__init__`. Each entry corresponds to one worker
-            process. I.e., the length of this list is the number of ESSs.
+            process. I.e., the length of this list is the number of eSSs.
             Ideally, this list contains some more conservative and some more
             aggressive configurations.
-            Resource limits such as ``max_eval`` apply to a single ESS
+            Resource limits such as ``max_eval`` apply to a single eSS
             iteration, not to the full search.
             Mutually exclusive with ``num_workers``.
 
@@ -145,7 +143,7 @@ class SacessOptimizer:
 
         :param num_workers:
             Number of workers to be used. If this argument is given,
-            (different) default ESS settings will be used for each worker.
+            (different) default eSS settings will be used for each worker.
             Mutually exclusive with ``ess_init_args``.
             See :func:`get_default_ess_options` for details on the default
             settings.
@@ -165,7 +163,8 @@ class SacessOptimizer:
             current working directory named
             ``SacessOptimizerTemp-{random suffix}``.
             When setting this option, make sure any optimizers running in
-            parallel have a unique `tmpdir`. Expected to be empty.
+            parallel have a unique `tmpdir`.
+            The directory is expected to be empty.
         :param mp_start_method:
             The start method for the multiprocessing context.
             See :mod:`multiprocessing` for details. Running `SacessOptimizer`
@@ -210,10 +209,10 @@ class SacessOptimizer:
         self,
         problem: Problem,
     ) -> pypesto.Result:
-        """Solve the given optimization problem.
+        """Minimize the given problem.
 
-        Note that if this function is called from a multithreaded program (
-        multiple threads running at the time of calling this function) and
+        Note that if this function is called from a multithreaded program
+        (multiple threads running at the time of calling this function) and
         the :mod:`multiprocessing` `start method` is set to ``fork``, there is
         a good chance for deadlocks. Postpone spawning threads until after
         `minimize` or change the *start method* to ``spawn``.
@@ -415,12 +414,12 @@ class SacessOptimizer:
 class SacessManager:
     """The Sacess manager.
 
-    Manages shared memory of a SACESS run. Loosely corresponds to the manager
+    Manages shared memory of a saCeSS run. Loosely corresponds to the manager
     process in [PenasGon2017]_.
 
     :ivar _dim: Dimension of the optimization problem
     :ivar _num_workers: Number of workers
-    :ivar _ess_options: ESS options for each worker
+    :ivar _ess_options: eSS options for each worker
     :ivar _best_known_fx: Best objective value encountered so far
     :ivar _best_known_x: Parameters corresponding to ``_best_known_fx``
     :ivar _worker_scores: Performance score of the different workers
@@ -432,7 +431,7 @@ class SacessManager:
     :ivar _rejection_threshold: Threshold for relative objective improvements
         that incoming solutions have to pass to be accepted
     :ivar _lock: Lock for accessing shared state.
-    :ivar _terminate: Flag to signal termination of the SACESS run to workers
+    :ivar _terminate: Flag to signal termination of the saCeSS run to workers
     :ivar _logger: A logger instance
     :ivar _options: Further optimizer hyperparameters.
     """
@@ -875,7 +874,7 @@ class SacessWorker:
         """Replace the global refset member by the given solution."""
         # [PenasGon2017]_ page 8, top
         if "cooperative_solution" not in refset.attributes:
-            label = np.zeros(shape=refset.dim)
+            label = np.zeros(shape=refset.dim, dtype=int)
             # on first call, mark the worst solution as "cooperative solution"
             cooperative_solution_idx = np.argmax(refset.fx)
             label[cooperative_solution_idx] = 1

@@ -789,11 +789,13 @@ class DefaultRecombination:
         """
         dim = refset.dim
         p_dim = evaluator.problem.dim
+        # arrays for the next generation
         y = np.zeros((dim, p_dim))
         fy = np.full(dim, np.inf)
 
         for i in range(dim):
             # build children from i combined with all other j != i
+            # (i.e., `dim_refset**2 - dim_refset` children in total)
             xs_new = np.vstack(
                 tuple(
                     self.combine(refset, evaluator, i, j)

@@ -135,7 +135,7 @@ class RefSet:
         Replace a parameter vector if its maximum relative difference to a
         better parameter vector is below the given threshold.
 
-        Assumes RefSet is sorted.
+        Assumes RefSet is sorted, and ensures the RefSet remains sorted.
         """
         # Compare [PenasGon2007]
         #  Note that the main text states that distance between the two points
@@ -148,10 +148,11 @@ class RefSet:
         #  admissible point.
         x = self.x
         ub, lb = self.evaluator.problem.ub, self.evaluator.problem.lb
+        width = ub - lb
 
         def normalize(x):
             """Normalize parameter vector to the bounds of the search space."""
-            return (x - lb) / (ub - lb)
+            return (x - lb) / width
 
         for i in range(self.dim):
             for j in range(i + 1, self.dim):

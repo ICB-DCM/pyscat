@@ -286,8 +286,6 @@ class ESSOptimizer:
                 raise ValueError(
                     "Either refset or dim_refset have to be provided."
                 )
-            # [EgeaMar2010]_ 2.1
-            self.n_diverse = self.n_diverse or 10 * problem.dim
             self.evaluator = create_function_evaluator(
                 problem,
                 n_threads=self.n_threads,
@@ -296,7 +294,10 @@ class ESSOptimizer:
 
             self.refset = RefSet(dim=self.dim_refset, evaluator=self.evaluator)
             # Initial RefSet generation
-            self.refset.initialize_random(n_diverse=self.n_diverse)
+            # [EgeaMar2010]_ 2.1
+            self.refset.initialize_random(
+                n_diverse=self.n_diverse or 10 * problem.dim
+            )
         else:
             self.refset = refset
 

@@ -125,36 +125,29 @@ class SacessOptimizer:
             with ``check_fval=True`` or ``check_grad=True`` is not recommended
             since it would create significant overhead.
         :param num_workers:
-            Number of workers to be used. If this argument is given,
+            Number of workers to be used. A minimum of 2 workers is required.
+            If this argument is given,
             (different) default eSS settings will be used for each worker.
             Mutually exclusive with ``ess_init_args``.
             See :func:`get_default_ess_options` for details on the default
             settings.
+            Currently, if ``problem.objective`` supports gradients,
+            the default local optimizer is :class:`FidesOptimizer`.
+            Otherwise, no local optimizer is used by default.
+            This may be changed in future releases.
         :param ess_init_args:
             List of argument dictionaries passed to
             :func:`ESSOptimizer.__init__`. Each entry corresponds to one worker
             process. I.e., the length of this list is the number of eSSs.
+            Mutually exclusive with ``num_workers``.
+            If not provided, default settings will be used,
+            see :func:`get_default_ess_options`.
+
             Ideally, this list contains some more conservative and some more
             aggressive configurations.
             Resource limits such as ``max_eval`` apply to a single eSS
             iteration, not to the full search.
             Mutually exclusive with ``num_workers``.
-
-            Recommended default settings can be obtained from
-            :func:`get_default_ess_options`. For example, to run
-            :class:`SacessOptimizer` without a local optimizer, use:
-
-            >>> from pyscat import get_default_ess_options
-            >>> ess_init_args = get_default_ess_options(
-            ...     num_workers=12,
-            ...     dim=10, # usually problem.dim
-            ...     local_optimizer=False,
-            ... )
-            >>> ess_init_args  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
-            [{'dim_refset': 5, 'balance': 0.0, 'local_n1': 1, 'local_n2': 1},
-            ...
-             {'dim_refset': 7, 'balance': 1.0, 'local_n1': 4, 'local_n2': 4}]
-
         :param max_walltime_s:
             Maximum walltime in seconds. It will only be checked between local
             optimizations and other simulations, and thus, may be exceeded by
@@ -222,6 +215,26 @@ class SacessOptimizer:
         )
         self._mp_ctx = get_context(mp_start_method)
         self.options = options or SacessOptions()
+
+    def set_local_optimizer(
+        self,
+        local_optimizer: None
+        | pypesto.optimize.Optimizer
+        | Callable[..., pypesto.optimize.Optimizer] = True,
+    ):
+        """Set a local solver for all workers.
+
+        :param local_optimizer: The local optimizer to use
+            (see same argument in :class:`ESSOptimizer`):
+            a :class:`Optimizer` instance,
+            a :obj:`Callable` returning an optimizer instance,
+            or ``None`` to disable local searches.
+
+            The callable can be used to propagate walltime limits to the local
+            optimizers. See :meth:`SacessFidesFactory.__call__` for an example.
+        """
+        for ess_kwargs in self.ess_init_args:
+            ess_kwargs["local_optimizer"] = local_optimizer
 
     def minimize(
         self,
@@ -1041,6 +1054,23 @@ def get_default_ess_options(
         should provide a different local optimizer or consider using
         :class:`pypesto.objective.finite_difference.FD` to approximate the
         gradient using finite differences.
+
+    Examples
+    --------
+
+    To get default ESS settings for running :class:`SacessOptimizer` without
+    a local optimizer, use:
+
+    >>> from pypesto.optimize.ess import get_default_ess_options
+    >>> ess_init_args = get_default_ess_options(
+    ...     num_workers=12,
+    ...     dim=10, # usually problem.dim
+    ...     local_optimizer=False,
+    ... )
+    >>> ess_init_args  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
+    [{'dim_refset': 5, 'balance': 0.0, 'local_n1': 1, 'local_n2': 1},
+    ...
+     {'dim_refset': 7, 'balance': 1.0, 'local_n1': 4, 'local_n2': 4}]
     """
     min_dimrefset = 5
 

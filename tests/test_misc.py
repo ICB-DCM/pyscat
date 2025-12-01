@@ -11,7 +11,6 @@ from pyscat import (
     SacessIpoptFactory,
     SacessOptimizer,
     SacessOptions,
-    get_default_ess_options,
 )
 
 
@@ -44,26 +43,22 @@ def test_ess(rosen_problem, local_optimizer, ess_type):
         )
 
     elif ess_type == "sacess":
-        # SACESS with 12 processes
+        # saCeSS with 12 processes
         #  We use a higher number than reasonable to be more likely to trigger
-        #  any potential race conditions (gh-1204)
-        ess_init_args = get_default_ess_options(
-            num_workers=12, dim=problem.dim
-        )
-        for x in ess_init_args:
-            x["local_optimizer"] = local_optimizer
+        #  any potential race conditions (gh-pypesto/1204)
         ess = SacessOptimizer(
             problem=problem,
+            num_workers=12,
             max_walltime_s=4,
             sacess_loglevel=logging.DEBUG,
             ess_loglevel=logging.WARNING,
-            ess_init_args=ess_init_args,
             options=SacessOptions(
                 adaptation_min_evals=500,
                 adaptation_sent_offset=10,
                 adaptation_sent_coeff=5,
             ),
         )
+        ess.set_local_optimizer(local_optimizer)
         res = ess.minimize()
     else:
         raise ValueError(f"Unsupported ESS type {ess_type}.")

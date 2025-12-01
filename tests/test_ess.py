@@ -134,3 +134,26 @@ def test_ess_is_deterministic(rosen_problem, n_procs, n_threads):
     npt.assert_array_equal(best_fx1, best_fx2)
     npt.assert_array_equal(ess1.refset.x, ess2.refset.x)
     assert ess1.evaluator.n_eval == ess2.evaluator.n_eval
+
+
+def test_failure_on_invalid_bounds(rosen_problem):
+    lb, ub = rosen_problem.lb.copy(), rosen_problem.ub.copy()
+    problem = rosen_problem
+    ess = ESSOptimizer(max_iter=5, dim_refset=10)
+
+    problem.lb_full[-1] = float("inf")
+    with pytest.raises(ValueError, match="bound"):
+        ess.minimize(problem)
+
+    problem.lb_full, problem.ub_full = lb.copy(), ub.copy()
+    problem.ub_full[-1] = float("-inf")
+    with pytest.raises(ValueError, match="bound"):
+        ess.minimize(problem)
+
+    problem.lb_full, problem.ub_full = lb.copy(), lb.copy()
+    with pytest.raises(ValueError, match="bound"):
+        ess.minimize(problem)
+
+    problem.lb_full, problem.ub_full = ub.copy(), lb.copy()
+    with pytest.raises(ValueError, match="bounds"):
+        ess.minimize(problem)

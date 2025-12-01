@@ -30,7 +30,7 @@ from pypesto.store.save_to_hdf5 import (
     ProblemHDF5Writer,
 )
 
-from .ess import ESSExitFlag, ESSOptimizer
+from .ess import ESSExitFlag, ESSOptimizer, _check_valid_bounds
 from .function_evaluator import create_function_evaluator
 from .refset import RefSet
 
@@ -231,6 +231,7 @@ class SacessOptimizer:
             included. Additional results may be included - this is subject to
             change.
         """
+        _check_valid_bounds(problem)
         start_time = time.time()
         ess_init_args = self.ess_init_args or get_default_ess_options(
             num_workers=self.num_workers,

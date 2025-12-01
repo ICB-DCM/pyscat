@@ -280,6 +280,8 @@ class ESSOptimizer:
                 "Exactly one of `problem` or `refset` has to be provided."
             )
 
+        _check_valid_bounds(problem if problem else refset.evaluator.problem)
+
         # generate initial RefSet if not provided
         if refset is None:
             if self.dim_refset is None:
@@ -906,3 +908,29 @@ class GoBeyondStrategy:
 
             if should_continue is not None and not should_continue():
                 break
+
+
+def _check_valid_bounds(
+    problem: Problem,
+) -> None:
+    """Check that the problem has valid bounds.
+
+    :param problem:
+        Problem to check.
+    :raises ValueError:
+        If bounds are invalid.
+    """
+    if problem.lb is None or problem.ub is None:
+        raise ValueError(
+            "Optimizer requires box constraints (lower and upper bounds), "
+            "but None were given."
+        )
+    if np.any(problem.ub <= problem.lb):
+        raise ValueError(
+            "Invalid bounds: upper bound must be larger than lower bound "
+            "for all parameters."
+        )
+    if np.any(np.isinf(problem.lb)) or np.any(np.isinf(problem.ub)):
+        raise ValueError(
+            "Invalid bounds: lower and upper bounds must be finite."
+        )

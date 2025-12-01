@@ -94,3 +94,26 @@ def test_sacess_worker_error(capsys):
     res = sacess.minimize(problem)
     assert isinstance(res, pypesto.Result)
     assert "Intentional error." in capsys.readouterr().err
+
+
+def test_failure_on_invalid_bounds(rosen_problem):
+    lb, ub = rosen_problem.lb.copy(), rosen_problem.ub.copy()
+    problem = rosen_problem
+    ess = SacessOptimizer(num_workers=2, max_walltime_s=1)
+
+    problem.lb_full[-1] = float("inf")
+    with pytest.raises(ValueError, match="bound"):
+        ess.minimize(problem)
+
+    problem.lb_full, problem.ub_full = lb.copy(), ub.copy()
+    problem.ub_full[-1] = float("-inf")
+    with pytest.raises(ValueError, match="bound"):
+        ess.minimize(problem)
+
+    problem.lb_full, problem.ub_full = lb.copy(), lb.copy()
+    with pytest.raises(ValueError, match="bound"):
+        ess.minimize(problem)
+
+    problem.lb_full, problem.ub_full = ub.copy(), lb.copy()
+    with pytest.raises(ValueError, match="bounds"):
+        ess.minimize(problem)

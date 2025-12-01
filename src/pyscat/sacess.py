@@ -960,7 +960,7 @@ class SacessWorker:
             x=ess.x_best,
             fval=ess.fx_best,
             message=f"Global best (iteration {ess.n_iter})",
-            time=time.time() - ess.starttime,
+            time=time.time() - ess._start_time,
             n_fval=ess.evaluator.n_eval,
             optimizer=str(ess),
         )

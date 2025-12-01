@@ -258,7 +258,7 @@ class ESSOptimizer:
         self.x_best_has_changed: bool = False
         self.exit_flag: ESSExitFlag = ESSExitFlag.DID_NOT_RUN
         self.evaluator: FunctionEvaluator | None = None
-        self.starttime: float | None = None
+        self._start_time: float | None = None
         self.history: MemoryHistory = MemoryHistory()
 
     def _initialize_minimize(
@@ -271,7 +271,7 @@ class ESSOptimizer:
         Create initial refset, start timer, ... .
         """
         self._initialize()
-        self.starttime = time.time()
+        self._start_time = time.time()
 
         if (refset is None and problem is None) or (
             refset is not None and problem is not None
@@ -390,7 +390,7 @@ class ESSOptimizer:
             "exitflag": self.exit_flag,
             # meaningful? this is the overall time, and identical for all
             #  reported points
-            "time": time.time() - self.starttime,
+            "time": time.time() - self._start_time,
             "n_fval": self.evaluator.n_eval,
             "optimizer": str(self),
         }
@@ -457,7 +457,7 @@ class ESSOptimizer:
         """Get remaining wall time in seconds."""
         if self.max_walltime_s is None:
             return np.inf
-        return self.max_walltime_s - (time.time() - self.starttime)
+        return self.max_walltime_s - (time.time() - self._start_time)
 
     def _get_remaining_eval(self):
         """Get remaining function evaluations."""

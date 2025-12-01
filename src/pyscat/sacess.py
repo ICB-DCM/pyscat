@@ -88,11 +88,12 @@ class SacessOptimizer:
     ... )
     >>> # Create and run the optimizer
     >>> sacess = SacessOptimizer(
+    ...     problem=problem,
     ...     num_workers=2,
     ...     max_walltime_s=5,
     ...     sacess_loglevel=logging.WARNING
     ... )
-    >>> result = sacess.minimize(problem)
+    >>> result = sacess.minimize()
 
     .. seealso::
 
@@ -105,6 +106,7 @@ class SacessOptimizer:
 
     def __init__(
         self,
+        problem: Problem,
         num_workers: int | None = None,
         ess_init_args: list[dict[str, Any]] | None = None,
         max_walltime_s: float = np.inf,
@@ -116,6 +118,18 @@ class SacessOptimizer:
     ):
         """Construct.
 
+        :param problem: The minimization problem.
+            :meth:`Problem.startpoint_method` will be used to sample random
+            points. `SacessOptimizer` will deal with non-evaluable points.
+            Therefore, using :class:`pypesto.startpoint.CheckedStartpoints`
+            with ``check_fval=True`` or ``check_grad=True`` is not recommended
+            since it would create significant overhead.
+        :param num_workers:
+            Number of workers to be used. If this argument is given,
+            (different) default eSS settings will be used for each worker.
+            Mutually exclusive with ``ess_init_args``.
+            See :func:`get_default_ess_options` for details on the default
+            settings.
         :param ess_init_args:
             List of argument dictionaries passed to
             :func:`ESSOptimizer.__init__`. Each entry corresponds to one worker
@@ -141,12 +155,6 @@ class SacessOptimizer:
             ...
              {'dim_refset': 7, 'balance': 1.0, 'local_n1': 4, 'local_n2': 4}]
 
-        :param num_workers:
-            Number of workers to be used. If this argument is given,
-            (different) default eSS settings will be used for each worker.
-            Mutually exclusive with ``ess_init_args``.
-            See :func:`get_default_ess_options` for details on the default
-            settings.
         :param max_walltime_s:
             Maximum walltime in seconds. It will only be checked between local
             optimizations and other simulations, and thus, may be exceeded by
@@ -172,6 +180,9 @@ class SacessOptimizer:
         :param options:
             Further optimizer hyperparameters, see :class:`SacessOptions`.
         """
+        _check_valid_bounds(problem)
+        self.problem = problem
+
         if (num_workers is None and ess_init_args is None) or (
             num_workers is not None and ess_init_args is not None
         ):
@@ -179,13 +190,20 @@ class SacessOptimizer:
                 "Exactly one of `num_workers` or `ess_init_args` "
                 "has to be provided."
             )
-
         self.num_workers = num_workers or len(ess_init_args)
         if self.num_workers < 2:
             raise ValueError(
                 f"{self.__class__.__name__} needs at least 2 workers."
             )
-        self.ess_init_args = ess_init_args
+        self.ess_init_args = ess_init_args or get_default_ess_options(
+            num_workers=self.num_workers,
+            dim=problem.dim,
+            # Dunno what a good default for a derivative-free local optimizer
+            #  would be. So for now, we only use a local optimizer if we can
+            #  use a gradient-based one.
+            local_optimizer=problem.objective.has_grad,
+        )
+
         self.max_walltime_s = max_walltime_s
         self.exit_flag = ESSExitFlag.DID_NOT_RUN
         self.ess_loglevel = ess_loglevel
@@ -207,7 +225,6 @@ class SacessOptimizer:
 
     def minimize(
         self,
-        problem: Problem,
     ) -> pypesto.Result:
         """Minimize the given problem.
 
@@ -217,13 +234,6 @@ class SacessOptimizer:
         a good chance for deadlocks. Postpone spawning threads until after
         `minimize` or change the *start method* to ``spawn``.
 
-        :param problem:
-            Minimization problem.
-            :meth:`Problem.startpoint_method` will be used to sample random
-            points. `SacessOptimizer` will deal with non-evaluable points.
-            Therefore, using :class:`pypesto.startpoint.CheckedStartpoints`
-            with ``check_fval=True`` or ``check_grad=True`` is not recommended
-            since it would create significant overhead.
         :return:
             Result object with optimized parameters in
             :attr:`pypesto.Result.optimize_result`.
@@ -231,19 +241,10 @@ class SacessOptimizer:
             included. Additional results may be included - this is subject to
             change.
         """
-        _check_valid_bounds(problem)
         start_time = time.time()
-        ess_init_args = self.ess_init_args or get_default_ess_options(
-            num_workers=self.num_workers,
-            dim=problem.dim,
-            # Dunno what a good default for a derivative-free local optimizer
-            #  would be. So for now, we only use a local optimizer if we can
-            #  use a gradient-based one.
-            local_optimizer=problem.objective.has_grad,
-        )
         logger.debug(
             f"Running {self.__class__.__name__} with {self.num_workers} "
-            f"workers: {ess_init_args} and {self.options}."
+            f"workers: {self.ess_init_args} and {self.options}."
         )
 
         logging_handler = logging.StreamHandler()
@@ -261,8 +262,8 @@ class SacessOptimizer:
         with self._mp_ctx.Manager() as shmem_manager:
             sacess_manager = SacessManager(
                 shmem_manager=shmem_manager,
-                ess_options=ess_init_args,
-                dim=problem.dim,
+                ess_options=self.ess_init_args,
+                dim=self.problem.dim,
                 options=self.options,
             )
             # create workers
@@ -279,7 +280,7 @@ class SacessOptimizer:
                     ),
                     options=self.options,
                 )
-                for worker_idx, ess_kwargs in enumerate(ess_init_args)
+                for worker_idx, ess_kwargs in enumerate(self.ess_init_args)
             ]
             # launch worker processes
             worker_processes = [
@@ -288,7 +289,7 @@ class SacessOptimizer:
                     target=_run_worker,
                     args=(
                         worker,
-                        problem,
+                        self.problem,
                         logging_thread.queue,
                     ),
                 )
@@ -315,7 +316,7 @@ class SacessOptimizer:
         self.exit_flag = min(
             worker_result.exit_flag for worker_result in self.worker_results
         )
-        result = self._create_result(problem)
+        result = self._create_result(self.problem)
         self._delete_tmpdir()
 
         walltime = time.time() - start_time

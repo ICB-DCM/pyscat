@@ -132,9 +132,12 @@ def test_logger_sacess():
 
     with el.attach(problem):
         optimizer = SacessOptimizer(
-            num_workers=4, max_walltime_s=2, sacess_loglevel=logging.WARNING
+            problem=problem,
+            num_workers=4,
+            max_walltime_s=2,
+            sacess_loglevel=logging.WARNING,
         )
-        res = optimizer.minimize(problem=problem)
+        res = optimizer.minimize()
 
     # Check that all evaluations were logged
     assert len(el.evals) == optimizer.n_eval_total
@@ -227,9 +230,12 @@ def test_logger_threshold_sacess():
 
     with el.attach(problem):
         optimizer = SacessOptimizer(
-            num_workers=4, max_walltime_s=2, sacess_loglevel=logging.WARNING
+            problem=problem,
+            num_workers=4,
+            max_walltime_s=2,
+            sacess_loglevel=logging.WARNING,
         )
-        res = optimizer.minimize(problem=problem)
+        res = optimizer.minimize()
 
     # Check that all evaluations were logged
     assert len(el.evals_all) == optimizer.n_eval_total

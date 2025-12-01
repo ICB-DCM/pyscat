@@ -39,6 +39,10 @@ def test_ess(rosen_problem, local_optimizer, ess_type):
             n_threads=2,
             balance=0.5,
         )
+        res = ess.minimize(
+            problem=problem,
+        )
+
     elif ess_type == "sacess":
         # SACESS with 12 processes
         #  We use a higher number than reasonable to be more likely to trigger
@@ -49,6 +53,7 @@ def test_ess(rosen_problem, local_optimizer, ess_type):
         for x in ess_init_args:
             x["local_optimizer"] = local_optimizer
         ess = SacessOptimizer(
+            problem=problem,
             max_walltime_s=4,
             sacess_loglevel=logging.DEBUG,
             ess_loglevel=logging.WARNING,
@@ -59,13 +64,10 @@ def test_ess(rosen_problem, local_optimizer, ess_type):
                 adaptation_sent_coeff=5,
             ),
         )
-
+        res = ess.minimize()
     else:
         raise ValueError(f"Unsupported ESS type {ess_type}.")
 
-    res = ess.minimize(
-        problem=problem,
-    )
     assert ess.exit_flag in (ESSExitFlag.MAX_TIME, ESSExitFlag.MAX_ITER)
     print("ESS result: ", res.summary())
 

@@ -24,8 +24,10 @@ def test_sacess_finds_minimum(problem_info):
     ess_init_args = get_default_ess_options(
         num_workers=8, dim=problem.dim, local_optimizer=False
     )
-    ess = SacessOptimizer(max_walltime_s=6, ess_init_args=ess_init_args)
-    res = ess.minimize(problem)
+    ess = SacessOptimizer(
+        problem=problem, max_walltime_s=6, ess_init_args=ess_init_args
+    )
+    res = ess.minimize()
     best_fx = res.optimize_result[0].fval
 
     assert abs(best_fx - expected_best_fx) < 1e-4, (
@@ -43,6 +45,7 @@ def test_sacess_adaptation(capsys, rosen_problem):
         num_workers=2, dim=problem.dim, local_optimizer=False
     )
     ess = SacessOptimizer(
+        problem=problem,
         max_walltime_s=2,
         sacess_loglevel=logging.DEBUG,
         ess_loglevel=logging.DEBUG,
@@ -55,7 +58,7 @@ def test_sacess_adaptation(capsys, rosen_problem):
             adaptation_sent_coeff=0,
         ),
     )
-    ess.minimize(problem)
+    ess.minimize()
     assert "Updated settings on worker" in capsys.readouterr().err
 
 
@@ -86,12 +89,13 @@ def test_sacess_worker_error(capsys):
         objective=objective, lb=0 * np.ones((1, 2)), ub=1 * np.ones((1, 2))
     )
     sacess = SacessOptimizer(
+        problem=problem,
         num_workers=2,
         max_walltime_s=2,
         sacess_loglevel=logging.DEBUG,
         ess_loglevel=logging.DEBUG,
     )
-    res = sacess.minimize(problem)
+    res = sacess.minimize()
     assert isinstance(res, pypesto.Result)
     assert "Intentional error." in capsys.readouterr().err
 
@@ -99,21 +103,20 @@ def test_sacess_worker_error(capsys):
 def test_failure_on_invalid_bounds(rosen_problem):
     lb, ub = rosen_problem.lb.copy(), rosen_problem.ub.copy()
     problem = rosen_problem
-    ess = SacessOptimizer(num_workers=2, max_walltime_s=1)
 
     problem.lb_full[-1] = float("inf")
     with pytest.raises(ValueError, match="bound"):
-        ess.minimize(problem)
+        SacessOptimizer(problem=problem, num_workers=2, max_walltime_s=1)
 
     problem.lb_full, problem.ub_full = lb.copy(), ub.copy()
     problem.ub_full[-1] = float("-inf")
     with pytest.raises(ValueError, match="bound"):
-        ess.minimize(problem)
+        SacessOptimizer(problem=problem, num_workers=2, max_walltime_s=1)
 
     problem.lb_full, problem.ub_full = lb.copy(), lb.copy()
     with pytest.raises(ValueError, match="bound"):
-        ess.minimize(problem)
+        SacessOptimizer(problem=problem, num_workers=2, max_walltime_s=1)
 
     problem.lb_full, problem.ub_full = ub.copy(), lb.copy()
     with pytest.raises(ValueError, match="bounds"):
-        ess.minimize(problem)
+        SacessOptimizer(problem=problem, num_workers=2, max_walltime_s=1)

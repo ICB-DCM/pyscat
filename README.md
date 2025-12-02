@@ -1,5 +1,6 @@
 [![ReadTheDocs status](https://app.readthedocs.org/projects/pyscat/badge/?version=latest)](https://pyscat.readthedocs.io/)
 [![PyPI - Version](https://img.shields.io/pypi/v/pyscat)](https://pypi.org/project/pyscat/)
+[![DOI](https://zenodo.org/badge/1103842718.svg)](https://doi.org/10.5281/zenodo.17787407)
 
 # PyScat
 

@@ -6,9 +6,10 @@
    :caption: Contents:
 
    About <about>
-   Getting Started <getting_started>
+   Getting started <getting_started>
    eSS <ess_intro>
    saCeSS <sacess_intro>
    How-to <howto>
    API reference <api>
+   Release notes <release_notes>
    Development <development>

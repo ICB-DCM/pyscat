@@ -1,3 +1,4 @@
+[![ReadTheDocs status](https://app.readthedocs.org/projects/pyscat/badge/?version=latest)](https://pyscat.readthedocs.io/)
 [![PyPI - Version](https://img.shields.io/pypi/v/pyscat)](https://pypi.org/project/pyscat/)
 
 # PyScat
@@ -5,7 +6,8 @@
 *A Python library for scatter-search metaheuristics.*
 
 > **Note**
-> This package is still under development. Documentation is incomplete, and the API may change without notice. The PyPI package is currently only a stub and does not contain the full functionality.
+> This package is still under development. Documentation is incomplete,
+> and the API may change without notice.
 > For now, please use the scatter search implementation in
 > [pyPESTO](https://pypesto.readthedocs.io/en/latest/).
 
@@ -19,7 +21,7 @@ PyScat currently implements two scatter-search algorithms:
   ([DOI:10.1186/s12859-016-1452-4](https://doi.org/10.1186/s12859-016-1452-4))
 
 PyScat currently builds on top of the
-[PyPESTO](https://pypesto.readthedocs.io/en/latest/) framework for parameter
+[pyPESTO](https://pypesto.readthedocs.io/en/latest/) framework for parameter
 estimation and leverages its problem definition and optimizer interfaces.
 
 ## 📖 Documentation
@@ -29,8 +31,14 @@ Documentation is available at
 
 ## 📦 Installation
 
-Once available on PyPI:
+From [PyPI](https://pypi.org/project/pyscat/):
 
 ```bash
 pip install pyscat
+```
+
+Latest development version from [GitHub](https://github.com/ICB-DCM/pyscat):
+
+```bash
+pip install git+https://github.com/ICB-DCM/pyscat@main
 ```

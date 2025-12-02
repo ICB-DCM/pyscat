@@ -1,12 +1,15 @@
 About PyScat
 ============
 
-PyScat is a Python library implementing scatter-search metaheuristics for parameter estimation and optimization.
+PyScat is a Python library implementing scatter-search metaheuristics
+for global optimization.
 
 .. note::
 
-   This package is still under development. Documentation is incomplete, and the API may change without notice. The PyPI package is currently only a stub and does not contain the full functionality.
-   For now, please use the scatter search implementations available in `pyPESTO <https://pypesto.readthedocs.io/en/latest/>`_.
+   This package is still under development.
+   Documentation is incomplete, and the API may change without notice.
+   For now, please use the scatter search implementations available in
+   `pyPESTO <https://pypesto.readthedocs.io/en/latest/>`_.
 
 Installation
 ------------

@@ -78,7 +78,7 @@ def monotonic_history(
     fx_mono = records.fx[unique_idx]
 
     # extend from last decrease to last timepoint
-    if t_mono[-1] != (t_max := t.max()):
+    if len(t_mono) and t_mono[-1] != (t_max := t.max()):
         t_mono = np.append(t_mono, [t_max])
         fx_mono = np.append(fx_mono, [fx_mono.min()])
 

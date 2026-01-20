@@ -52,3 +52,8 @@ def test_monotonic_history():
             -7.0,
             -9.0,
         ]
+
+    history4 = create_history(np.array([]), np.array([]))
+    t_mono, fx_mono = monotonic_history([history4])
+    assert t_mono.size == 0
+    assert fx_mono.size == 0

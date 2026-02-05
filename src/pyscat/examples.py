@@ -69,7 +69,7 @@ problem_info: dict[str, dict[str, Any]] = {
         "problem": problem_schwefel,
     },
     "Langermann": {
-        "global_best": -4.2220737923052925,
+        "global_best": -4.222073915703129,
         "problem": problem_langermann,
     },
 }

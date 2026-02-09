@@ -126,6 +126,7 @@ def test_logger_ess():
 
 
 def test_logger_sacess():
+    """Test logging all function evaluations during optimization."""
     problem = problem_schwefel
 
     el = EvalLogger()
@@ -147,6 +148,11 @@ def test_logger_sacess():
         tuple(x_logged): fx_logged for x_logged, fx_logged in el.evals
     }
     npt.assert_equal(logged_dict[tuple(best_x)], best_fx)
+
+    # ensure that all parameters are unique
+    # (catch any issues related to identical RNG states across workers)
+    logged_xs = [tuple(x_logged) for x_logged, fx_logged in el.evals]
+    assert len(logged_xs) == len(set(logged_xs)), "Parameters are not unique"
 
 
 class TestEvalLogger(EvalLogger):

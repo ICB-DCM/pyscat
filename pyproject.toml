@@ -26,7 +26,7 @@ classifiers = [
   "Topic :: Scientific/Engineering :: Mathematics",
 ]
 dependencies = [
-  "numpy>=2.3.0",
+  "numpy>=2.0",
   "pypesto",
   "fides",
 ]

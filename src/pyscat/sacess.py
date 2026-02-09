@@ -279,7 +279,7 @@ class SacessOptimizer:
                 "%(asctime)s %(name)s %(levelname)-8s %(message)s"
             )
         )
-        logging_thread = logging.handlers.QueueListener(
+        log_queue_listener = logging.handlers.QueueListener(
             self._mp_ctx.Queue(-1), logging_handler
         )
 
@@ -316,7 +316,7 @@ class SacessOptimizer:
                     args=(
                         worker,
                         self.problem,
-                        logging_thread.queue,
+                        log_queue_listener.queue,
                     ),
                 )
                 for i, worker in enumerate(workers)
@@ -326,7 +326,7 @@ class SacessOptimizer:
 
             # start logging thread only AFTER starting the worker processes
             #  to prevent deadlocks
-            logging_thread.start()
+            log_queue_listener.start()
 
             # wait for finish
             # collect results
@@ -334,7 +334,9 @@ class SacessOptimizer:
             for p in worker_processes:
                 p.join()
 
-        logging_thread.stop()
+        log_queue_listener.stop()
+        log_queue_listener.queue.close()
+        log_queue_listener.queue.join_thread()
 
         self.histories = [
             worker_result.history for worker_result in self.worker_results

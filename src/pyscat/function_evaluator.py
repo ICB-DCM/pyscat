@@ -30,8 +30,6 @@ class FunctionEvaluator:
     :ivar startpoint_method: Method for choosing feasible parameters
     :ivar n_eval: Number of objective evaluations since construction
         or last call to ``reset_counter``.
-    :ivar n_eval_round: Number of objective evaluations since construction
-        or last call to ``reset_counter`` or ``reset_round_counter``.
     """
 
     def __init__(
@@ -45,7 +43,6 @@ class FunctionEvaluator:
         self.problem: Problem = problem
         self.startpoint_method: StartpointMethod = problem.startpoint_method
         self.n_eval: int = 0
-        self.n_eval_round: int = 0
 
     def single(self, x: np.ndarray) -> float:
         """Evaluate objective at point ``x``.
@@ -53,7 +50,6 @@ class FunctionEvaluator:
         :return: The objective function value at ``x``.
         """
         self.n_eval += 1
-        self.n_eval_round += 1
         return self.problem.objective(x)
 
     def multiple(self, xs: Sequence[np.ndarray]) -> np.ndarray:
@@ -105,11 +101,6 @@ class FunctionEvaluator:
     def reset_counter(self):
         """Reset the overall function counter."""
         self.n_eval = 0
-        self.reset_round_counter()
-
-    def reset_round_counter(self):
-        """Reset the round function counter."""
-        self.n_eval_round = 0
 
     def _initialize_worker(self, local: threading.local):
         """Initialize worker threads."""
@@ -194,7 +185,6 @@ class FunctionEvaluatorMT(FunctionEvaluator):
                 dtype=float,
             )
             self.n_eval += len(xs)
-            self.n_eval_round += len(xs)
         else:
             res = np.fromiter(map(self.single, xs), dtype=float)
         return res
@@ -228,7 +218,6 @@ class FunctionEvaluatorMP(FunctionEvaluator):
             dtype=float,
         )
         self.n_eval += len(xs)
-        self.n_eval_round += len(xs)
         return res
 
 

@@ -41,18 +41,16 @@ def test_counters(subtests):
         FunctionEvaluatorMP(problem=problem, n_procs=4),
     ):
         with subtests.test(fe=fe):
-            assert fe.n_eval == 0 and fe.n_eval_round == 0
+            assert fe.n_eval == 0
 
             val = fe.single(np.array([1.0, 2.0]))
             assert pytest.approx(val) == 3.0
-            assert fe.n_eval == 1 and fe.n_eval_round == 1
-
-            fe.reset_round_counter()
+            assert fe.n_eval == 1
             fe.single(np.array([1.0, 2.0]))
-            assert fe.n_eval == 2 and fe.n_eval_round == 1
+            assert fe.n_eval == 2
 
             fe.reset_counter()
-            assert fe.n_eval == 0 and fe.n_eval_round == 0
+            assert fe.n_eval == 0
 
             xs = [
                 np.array([1.0, 0.0]),
@@ -61,10 +59,10 @@ def test_counters(subtests):
             ]
             fxs = fe.multiple(xs)
             assert fxs.shape == (3,)
-            assert fe.n_eval == fe.n_eval_round == len(xs)
+            assert fe.n_eval == len(xs)
 
             fe.multiple(xs)
-            assert fe.n_eval == fe.n_eval_round == 2 * len(xs)
+            assert fe.n_eval == 2 * len(xs)
 
 
 def test_random_retries_until_finite():

@@ -543,7 +543,6 @@ class ESSOptimizer:
             return
 
         self.last_local_search_niter = self.n_iter
-        self.evaluator.reset_round_counter()
 
     @staticmethod
     def prioritize_local_search_candidates(
@@ -655,7 +654,6 @@ class ESSOptimizer:
         #  evaluation counter (NOTE: depending on the setup, we might neglect
         #  gradient evaluations).
         self.evaluator.n_eval += optimizer_result.n_fval
-        self.evaluator.n_eval_round += optimizer_result.n_fval
 
         self.logger.info(
             f"Local search: {fx0} -> {optimizer_result.fval} "

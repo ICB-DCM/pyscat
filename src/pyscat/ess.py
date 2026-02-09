@@ -265,13 +265,16 @@ class ESSOptimizer:
         self,
         problem: Problem = None,
         refset: RefSet | None = None,
+        start_time: float | None = None,
     ):
         """(Re-)initialize for optimizations.
 
         Create initial refset, start timer, ... .
         """
         self._initialize()
-        self._start_time = time.time()
+        self._start_time = (
+            start_time if start_time is not None else time.time()
+        )
 
         if (refset is None and problem is None) or (
             refset is not None and problem is not None

@@ -1,4 +1,5 @@
 import logging
+import os
 
 import pytest
 from pypesto.optimize import FidesOptimizer
@@ -49,7 +50,7 @@ def test_ess(rosen_problem, local_optimizer, ess_type):
         ess = SacessOptimizer(
             problem=problem,
             num_workers=12,
-            max_walltime_s=4,
+            max_walltime_s=60 / min(12, os.cpu_count()),
             sacess_loglevel=logging.DEBUG,
             ess_loglevel=logging.WARNING,
             options=SacessOptions(

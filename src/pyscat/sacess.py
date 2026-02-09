@@ -305,6 +305,7 @@ class SacessOptimizer:
                         worker_idx, self._tmpdir
                     ),
                     options=self.options,
+                    start_time=start_time,
                 )
                 for worker_idx, ess_kwargs in enumerate(self.ess_init_args)
             ]
@@ -668,6 +669,7 @@ class SacessWorker:
         ess_loglevel: int = logging.WARNING,
         tmp_result_file: str = None,
         options: SacessOptions = None,
+        start_time: float | None = None,
     ):
         self._manager = manager
         self._worker_idx = worker_idx
@@ -677,7 +679,9 @@ class SacessWorker:
         self._ess_kwargs = ess_kwargs
         self._n_sent_solutions = 0
         self._max_walltime_s = max_walltime_s
-        self._start_time = None
+        self._start_time = (
+            start_time if start_time is not None else time.time()
+        )
         self._loglevel = loglevel
         self._ess_loglevel = ess_loglevel
         self.logger = None
@@ -689,8 +693,6 @@ class SacessWorker:
         self,
         problem: Problem,
     ):
-        self._start_time = time.time()
-
         # index of the local solution in ESSOptimizer.local_solutions
         #  that was most recently saved by _autosave
         last_saved_local_solution = -1
@@ -798,7 +800,9 @@ class SacessWorker:
         ess.logger = self.logger.getChild(f"sacess-{self._worker_idx:02d}-ess")
         ess.logger.setLevel(self._ess_loglevel)
 
-        ess._initialize_minimize(refset=self._refset)
+        ess._initialize_minimize(
+            refset=self._refset, start_time=self._start_time
+        )
 
         return ess
 

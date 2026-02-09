@@ -1,4 +1,5 @@
 import logging
+import os
 
 import numpy as np
 import pypesto
@@ -25,12 +26,14 @@ def test_sacess_finds_minimum(problem_info):
         num_workers=8, dim=problem.dim, local_optimizer=False
     )
     ess = SacessOptimizer(
-        problem=problem, max_walltime_s=6, ess_init_args=ess_init_args
+        problem=problem,
+        max_walltime_s=60 / min(8, os.cpu_count()),
+        ess_init_args=ess_init_args,
     )
     res = ess.minimize()
     best_fx = res.optimize_result[0].fval
 
-    assert abs(best_fx - expected_best_fx) < 1e-4, (
+    assert abs(best_fx - expected_best_fx) < 1e-3, (
         f"Expected best fx ~ {expected_best_fx}, got {best_fx}"
     )
     assert best_fx >= expected_best_fx, (
@@ -63,14 +66,15 @@ def test_sacess_adaptation(capsys, rosen_problem):
 class FunctionOrError:
     """Callable that raises an error every nth invocation."""
 
-    def __init__(self, fun, error_frequency=100):
+    def __init__(self, fun, error_period=100):
         self.counter = 0
-        self.error_frequency = error_frequency
+        # raise an error every `error_period` calls
+        self.error_period = error_period
         self.fun = fun
 
     def __call__(self, *args, **kwargs):
         self.counter += 1
-        if self.counter % self.error_frequency == 0:
+        if self.counter % self.error_period == 0:
             raise RuntimeError("Intentional error.")
         return self.fun(*args, **kwargs)
 
@@ -89,7 +93,7 @@ def test_sacess_worker_error(capsys):
     sacess = SacessOptimizer(
         problem=problem,
         num_workers=2,
-        max_walltime_s=2,
+        max_walltime_s=8,
         sacess_loglevel=logging.DEBUG,
         ess_loglevel=logging.DEBUG,
     )

@@ -622,14 +622,25 @@ class ESSOptimizer:
             )
 
         # create optimizer instance if necessary
-        optimizer = (
-            self.local_optimizer
-            if isinstance(self.local_optimizer, pypesto.optimize.Optimizer)
-            else self.local_optimizer(
+        if isinstance(self.local_optimizer, pypesto.optimize.Optimizer):
+            optimizer = self.local_optimizer
+            # added in pypesto 0.5.8
+            if (
+                hasattr(optimizer, "supports_maxeval")
+                and optimizer.supports_maxeval()
+            ):
+                optimizer.set_maxeval(max_eval)
+            if (
+                hasattr(optimizer, "supports_maxtime")
+                and optimizer.supports_maxtime()
+            ):
+                optimizer.set_maxtime(max_walltime_s)
+        else:
+            optimizer = self.local_optimizer(
                 max_eval=max_eval,
                 max_walltime_s=max_walltime_s,
             )
-        )
+
         # actual local search
         optimizer_result: OptimizerResult = optimizer.minimize(
             problem=self.evaluator.problem,

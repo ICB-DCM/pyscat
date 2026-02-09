@@ -118,3 +118,10 @@ def test_failure_on_invalid_bounds(rosen_problem):
     problem.lb_full, problem.ub_full = ub.copy(), lb.copy()
     with pytest.raises(ValueError, match="bounds"):
         SacessOptimizer(problem=problem, num_workers=2, max_walltime_s=1)
+
+
+def test_fail_on_x_guesses(rosen_problem):
+    problem = rosen_problem
+    problem.set_x_guesses(np.array([[0.5, 0.5], [1.5, 1.5]]))
+    with pytest.raises(ValueError, match="x_guesses"):
+        SacessOptimizer(problem=problem, num_workers=2, max_walltime_s=1)

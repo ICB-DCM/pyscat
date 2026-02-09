@@ -15,6 +15,8 @@ for global optimization.
    For now, please use the scatter search implementations available in
    `pyPESTO <https://pypesto.readthedocs.io/en/latest/>`_.
 
+Repository: https://github.com/ICB-DCM/pyscat
+
 Installation
 ------------
 

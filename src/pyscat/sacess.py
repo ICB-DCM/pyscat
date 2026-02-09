@@ -647,8 +647,9 @@ class SacessWorker:
         (obtained on its own or received from the manager).
     :ivar _n_received_solutions: Number of solutions received by this worker
         since the last one was sent to the manager.
-    :ivar _neval: Number of objective evaluations since the last solution was
-        sent to the manager.
+    :ivar _n_eval_last_sent:
+        Number of objective evaluations at the time the most recent solution
+        was sent to the manager, or 0 if no solution has been sent yet.
     :ivar _ess_kwargs: ESSOptimizer options for this worker
         (may get updated during the self-adaptive step).
     :ivar _n_sent_solutions: Number of solutions sent to the Manager.
@@ -675,7 +676,7 @@ class SacessWorker:
         self._worker_idx = worker_idx
         self._best_known_fx = np.inf
         self._n_received_solutions = 0
-        self._neval = 0
+        self._n_eval_last_sent = 0
         self._ess_kwargs = ess_kwargs
         self._n_sent_solutions = 0
         self._max_walltime_s = max_walltime_s
@@ -732,14 +733,16 @@ class SacessWorker:
 
             # check if the best solution of the last local ESS is sufficiently
             # better than the sacess-wide best solution
-            self.maybe_update_best(ess.x_best, ess.fx_best)
+            self.maybe_update_best(
+                ess.x_best, ess.fx_best, ess.evaluator.n_eval
+            )
             self._best_known_fx = min(ess.fx_best, self._best_known_fx)
 
             self._autosave(ess, last_saved_local_solution)
             last_saved_local_solution = len(ess.local_solutions) - 1
 
             self._cooperate()
-            self._maybe_adapt(problem)
+            self._maybe_adapt(problem, ess.evaluator.n_eval)
 
             t_left = self._max_walltime_s - (time.time() - self._start_time)
             self.logger.info(
@@ -830,7 +833,7 @@ class SacessWorker:
             self._n_received_solutions += 1
             self.replace_solution(self._refset, x=recv_x, fx=recv_fx)
 
-    def _maybe_adapt(self, problem: Problem):
+    def _maybe_adapt(self, problem: Problem, n_eval: int):
         """Perform the adaptation step if needed.
 
         Update ESS settings if conditions are met.
@@ -845,7 +848,7 @@ class SacessWorker:
         n_eval_thresh = problem.dim * self._options.adaptation_min_evals
         if (
             self._n_received_solutions > n_rcvd_thresh
-            or self._neval > n_eval_thresh
+            or n_eval - self._n_eval_last_sent > n_eval_thresh
         ):
             self._ess_kwargs = self._manager.reconfigure_worker(
                 self._worker_idx
@@ -861,10 +864,10 @@ class SacessWorker:
                 f"Worker {self._worker_idx} not adapting. "
                 f"Received: {self._n_received_solutions} <= {n_rcvd_thresh}, "
                 f"Sent: {self._n_sent_solutions}, "
-                f"neval: {self._neval} <= {n_eval_thresh}."
+                f"neval: {n_eval - self._n_eval_last_sent} <= {n_eval_thresh}."
             )
 
-    def maybe_update_best(self, x: np.ndarray, fx: float):
+    def maybe_update_best(self, x: np.ndarray, fx: float, n_eval: int):
         """Maybe update the best known solution and send it to the manager."""
         rel_change = (
             abs((fx - self._best_known_fx) / fx) if fx != 0 else np.nan
@@ -893,7 +896,7 @@ class SacessWorker:
             self._best_known_fx = fx
 
             # send best_known_fx to manager
-            self._neval = 0
+            self._n_eval_last_sent = n_eval
             self._n_received_solutions = 0
             elapsed_time = time.time() - self._start_time
             self._manager.submit_solution(

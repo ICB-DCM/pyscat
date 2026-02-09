@@ -74,7 +74,14 @@ def monotonic_history(
     # so that we can use np.unique later to remove duplicates
     records = np.rec.fromarrays([t_mono, fx_mono], names="t,fx")
     records.sort(order=["t", "fx"])
-    t_mono, unique_idx = np.unique(records.t, return_index=True, sorted=True)
+    if tuple(map(int, np.__version__.split("."))) >= (2, 3, 0):
+        # `sorted` argument was added in numpy 2.3.0
+        t_mono, unique_idx = np.unique(
+            records.t, return_index=True, sorted=True
+        )
+    else:
+        # pre 2.3.0, `unique` output was sorted by default
+        t_mono, unique_idx = np.unique(records.t, return_index=True)
     fx_mono = records.fx[unique_idx]
 
     # extend from last decrease to last timepoint

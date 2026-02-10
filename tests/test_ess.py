@@ -60,14 +60,14 @@ def test_ess_multiprocess(rosen_problem):
             options={FidesOptions.MAXTIME: max_walltime_s}
         ),
     )
-    refset = RefSet(
+    refset = RefSet.from_random(
         dim=10,
         evaluator=FunctionEvaluatorMP(
             problem=problem,
             n_procs=4,
         ),
+        n_diverse=100,
     )
-    refset.initialize_random(10 * refset.dim)
     res = ess.minimize(
         refset=refset,
     )

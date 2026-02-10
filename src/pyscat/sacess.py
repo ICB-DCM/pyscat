@@ -687,7 +687,7 @@ class SacessWorker:
         self._ess_loglevel = ess_loglevel
         self.logger = None
         self._tmp_result_file = tmp_result_file
-        self._refset = None
+        self._refset: RefSet | None = None
         self._options = options or SacessOptions()
 
     def run(
@@ -714,14 +714,13 @@ class SacessWorker:
         )
 
         # create initial refset
-        self._refset = RefSet(
-            dim=self._ess_kwargs["dim_refset"], evaluator=evaluator
-        )
-        self._refset.initialize_random(
+        self._refset = RefSet.from_random(
+            dim=self._ess_kwargs["dim_refset"],
             n_diverse=max(
                 self._ess_kwargs.get("n_diverse", 10 * problem.dim),
-                self._refset.dim,
-            )
+                self._ess_kwargs["dim_refset"],
+            ),
+            evaluator=evaluator,
         )
 
         ess = self._setup_ess()

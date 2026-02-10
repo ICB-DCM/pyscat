@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pypesto
 
-from .utils import monotonic_history
+from .utils import merge_monotonic_histories
 
 
 def plot_ess_history(history: pypesto.HistoryBase):
@@ -53,7 +53,7 @@ def plot_sacess_history(
         warnings.warn("No histories to plot.", stacklevel=2)
 
     # plot overall minimum
-    t_overall, fx_overall = monotonic_history(histories)
+    t_overall, fx_overall = merge_monotonic_histories(histories)
     ax.step(
         t_overall,
         fx_overall,

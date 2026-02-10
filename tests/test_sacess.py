@@ -44,6 +44,8 @@ def test_sacess_finds_minimum(problem_info):
 def test_sacess_adaptation(capsys, rosen_problem):
     """Test that adaptation step of the saCeSS optimizer succeeds."""
     problem = rosen_problem
+
+    # based on number of sent solutions
     ess = SacessOptimizer(
         problem=problem,
         num_workers=2,
@@ -53,12 +55,18 @@ def test_sacess_adaptation(capsys, rosen_problem):
         options=SacessOptions(
             # trigger frequent adaptation
             # - don't do that in production
-            adaptation_min_evals=0,
+            adaptation_min_evals=10**10,
             adaptation_sent_offset=0,
             adaptation_sent_coeff=0,
         ),
     )
     ess.set_local_optimizer(None)
+    ess.minimize()
+    assert "Updated settings on worker" in capsys.readouterr().err
+
+    # based on number of evaluations since last sent solution
+    ess.options.adaptation_min_evals = 0
+    ess.options.adaptation_sent_offset = 10**10
     ess.minimize()
     assert "Updated settings on worker" in capsys.readouterr().err
 

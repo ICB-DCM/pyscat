@@ -83,7 +83,7 @@ class ESSOptimizer:
 
     :ivar history:
         History of the best values/parameters found so far.
-        (Monotonously decreasing objective values.)
+        (Monotonically decreasing objective values.)
 
 
     Hyperparameters
@@ -356,7 +356,13 @@ class ESSOptimizer:
             History object to track the best values found so far.
 
         :returns:
-            The optimization result.
+            The optimization result. Contains the overall best value found and,
+            depending on the settings, the final RefSet and local search
+            results.
+
+            Note that the number of gradient and Hessian evaluations is not
+            tracked and thus set to 0 in the result, even if a local optimizer
+            is used that performs gradient/Hessian evaluations.
         """
         self._initialize_minimize(
             problem=problem, refset=refset, history=history

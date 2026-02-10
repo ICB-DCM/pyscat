@@ -1,7 +1,9 @@
 import logging
 import os
+from pathlib import Path
 
 import numpy as np
+import numpy.testing as npt
 import pypesto
 import pytest
 import scipy
@@ -33,12 +35,32 @@ def test_sacess_finds_minimum(problem_info):
     res = ess.minimize()
     best_fx = res.optimize_result[0].fval
 
+    # close to the approximate global minimum
     assert abs(best_fx - expected_best_fx) < 1e-3, (
         f"Expected best fx ~ {expected_best_fx}, got {best_fx}"
     )
     assert best_fx >= expected_best_fx, (
         f"Best fx {best_fx} is less than expected minimum {expected_best_fx}"
     )
+
+    # check history consistency
+    hist = res.optimize_result[0].history
+    assert isinstance(hist, pypesto.history.MemoryHistory)
+    assert hist.get_fval_trace()[-1] == best_fx, (
+        "Best fx in history does not match best fx in optimize_result."
+    )
+    assert np.all(np.diff(hist.get_fval_trace()) <= 0.0), (
+        "Fval trace in history is not monotonically decreasing."
+    )
+    assert np.all(np.diff(hist.get_time_trace()) >= 0.0), (
+        "Time trace in history is not monotonically increasing."
+    )
+    for x, fx in zip(hist.get_x_trace(), hist.get_fval_trace(), strict=True):
+        npt.assert_almost_equal(
+            problem.objective(x),
+            fx,
+            err_msg="History contains inconsistent x and fval traces.",
+        )
 
 
 def test_sacess_adaptation(capsys, rosen_problem):
@@ -137,3 +159,32 @@ def test_fail_on_x_guesses(rosen_problem):
     problem.set_x_guesses(np.array([[0.5, 0.5], [1.5, 1.5]]))
     with pytest.raises(ValueError, match="x_guesses"):
         SacessOptimizer(problem=problem, num_workers=2, max_walltime_s=1)
+
+
+def test_autosave(rosen_problem, tmp_path):
+    """Test autosave functionality of SacessOptimizer."""
+    problem = rosen_problem
+    save_path = Path(tmp_path)
+    ess = SacessOptimizer(
+        problem=problem,
+        num_workers=2,
+        max_walltime_s=2,
+        autosave_dir=save_path,
+    )
+    ess.minimize()
+    assert sorted(save_path.iterdir()) == [
+        ess.get_autosave_path(save_path, i) for i in range(ess.num_workers)
+    ], "Missing autosave files"
+
+    for i in range(ess.num_workers):
+        autosave_path = ess.get_autosave_path(save_path, i)
+        result = pypesto.store.read_result(
+            autosave_path, problem=True, optimize=True, with_history=True
+        )
+        assert len(result.optimize_result) == 1 + ess.worker_results[i].n_local
+        # if time exceeded between the last improvement and the last autosave,
+        #  the best solution might not be included in the autosave file
+        assert result.optimize_result[0].fval >= ess.worker_results[i].fx
+        hist = result.optimize_result[0].history
+        assert isinstance(hist, pypesto.history.HistoryBase)
+        assert hist.get_fval_trace()[-1] <= result.optimize_result[0].fval

@@ -637,7 +637,8 @@ class SacessManager:
 
         :return: List of worker results.
         """
-        return [self._result_queue.get() for _ in range(self._num_workers)]
+        res = [self._result_queue.get() for _ in range(self._num_workers)]
+        return sorted(res, key=lambda r: r.worker_idx)
 
 
 class SacessWorker:
@@ -780,6 +781,7 @@ class SacessWorker:
                     history = ess.history
 
                 worker_result = SacessWorkerResult(
+                    worker_idx=self._worker_idx,
                     x=ess.x_best,
                     fx=ess.fx_best,
                     history=history,
@@ -795,6 +797,7 @@ class SacessWorker:
         if worker_result is None:
             # Create some dummy result
             worker_result = SacessWorkerResult(
+                worker_idx=self._worker_idx,
                 x=np.full(self._manager._dim, np.nan),
                 fx=np.nan,
                 history=MemoryHistory(),
@@ -1453,6 +1456,8 @@ class SacessWorkerResult:
     :class:`SacessWorker` instance that is to be sent to
     :class:`SacessOptimizer`.
 
+    :ivar worker_idx:
+        Index of the worker this result corresponds to.
     :ivar x:
         Best parameters found.
     :ivar fx:
@@ -1469,6 +1474,7 @@ class SacessWorkerResult:
         Exit flag of the optimization process.
     """
 
+    worker_idx: int
     x: np.ndarray
     fx: float
     n_eval: int

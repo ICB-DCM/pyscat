@@ -1360,7 +1360,7 @@ class SacessCmaFactory:
         options: dict[str, Any] | None = None,
     ):
         if options is None:
-            options = {}
+            options = {"verbose": -10}
 
         self._options = options
 

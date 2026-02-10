@@ -16,7 +16,6 @@ from multiprocessing import get_context
 from multiprocessing.managers import SyncManager
 from pathlib import Path
 from typing import Any
-from uuid import uuid1
 from warnings import warn
 
 import numpy as np
@@ -29,7 +28,7 @@ from pypesto.history import (
     MemoryHistory,
 )
 from pypesto.problem import Problem
-from pypesto.store.read_from_hdf5 import read_result
+from pypesto.result import OptimizerResult
 from pypesto.store.save_to_hdf5 import (
     OptimizationResultHDF5Writer,
     ProblemHDF5Writer,
@@ -38,6 +37,7 @@ from pypesto.store.save_to_hdf5 import (
 from .ess import ESSExitFlag, ESSOptimizer, _check_valid_bounds
 from .function_evaluator import create_function_evaluator
 from .refset import RefSet
+from .utils import merge_monotonic_traces
 
 __all__ = [
     "SacessOptimizer",
@@ -68,7 +68,7 @@ class SacessOptimizer:
 
     :ivar histories:
         List of the histories of the best values/parameters
-        found by each worker. (Monotonously decreasing objective values.)
+        found by each worker. (Monotonically decreasing objective values.)
         See :func:`pyscat.plot.plot_sacess_history` for visualization.
 
     A basic example using :class:`SacessOptimizer` to minimize the Rosenbrock
@@ -117,9 +117,9 @@ class SacessOptimizer:
         max_walltime_s: float = np.inf,
         sacess_loglevel: int = logging.INFO,
         ess_loglevel: int = logging.WARNING,
-        tmpdir: Path | str = None,
         mp_start_method: str = "spawn",
         options: SacessOptions = None,
+        autosave_dir: Path | str = None,
     ):
         """Construct.
 
@@ -164,10 +164,12 @@ class SacessOptimizer:
             Loglevel for ESS runs.
         :param sacess_loglevel:
             Loglevel for SACESS runs.
-        :param tmpdir:
-            Directory for temporary files. This defaults to a directory in the
-            current working directory named
-            ``SacessOptimizerTemp-{random suffix}``.
+        :param autosave_dir:
+            Directory for storing intermediate results.
+            If not ``None``, HDF5 files with intermediate results will be
+            saved in this directory during the optimization.
+            This can be used to monitor the optimization while it is running,
+            or to recover results if the optimization was interrupted.
             When setting this option, make sure any optimizers running in
             parallel have a unique `tmpdir`.
             The directory is expected to be empty.
@@ -222,15 +224,12 @@ class SacessOptimizer:
         self.worker_results: list[SacessWorkerResult] = []
         logger.setLevel(self.sacess_loglevel)
 
-        self._tmpdir = tmpdir
-        if self._tmpdir is None:
-            while self._tmpdir is None or self._tmpdir.exists():
-                self._tmpdir = Path(f"SacessOptimizerTemp-{str(uuid1())[:8]}")
-        self._tmpdir = Path(self._tmpdir).absolute()
-        self._tmpdir.mkdir(parents=True, exist_ok=True)
-        self.histories: list[pypesto.history.memory.MemoryHistory] | None = (
-            None
-        )
+        self._autosave_dir: Path | None = None
+        if autosave_dir is not None:
+            self._autosave_dir = Path(autosave_dir).absolute()
+            self._autosave_dir.mkdir(parents=True, exist_ok=True)
+
+        self.histories: list[MemoryHistory] | None = None
         self._mp_ctx = get_context(mp_start_method)
         self.options = options or SacessOptions()
 
@@ -268,9 +267,14 @@ class SacessOptimizer:
         :return:
             Result object with optimized parameters in
             :attr:`pypesto.Result.optimize_result`.
-            Results are sorted by objective. At least the best parameters are
-            included. Additional results may be included - this is subject to
-            change.
+
+            Only the best solution found is returned.
+            To get the per-worker histories of the best values/parameters
+            found, use the :attr:`histories` attribute.
+
+            Note that the number of gradient and Hessian evaluations is not
+            tracked and thus set to 0 in the result, even if a local optimizer
+            is used that performs gradient/Hessian evaluations.
         """
         start_time = time.time()
         logger.debug(
@@ -306,8 +310,8 @@ class SacessOptimizer:
                     max_walltime_s=self.max_walltime_s,
                     loglevel=self.sacess_loglevel,
                     ess_loglevel=self.ess_loglevel,
-                    tmp_result_file=SacessWorker.get_temp_result_filename(
-                        worker_idx, self._tmpdir
+                    autosave_file=self.get_autosave_path(
+                        self._autosave_dir, worker_idx
                     ),
                     options=self.options,
                     start_time=start_time,
@@ -350,10 +354,9 @@ class SacessOptimizer:
         self.exit_flag = min(
             worker_result.exit_flag for worker_result in self.worker_results
         )
-        result = self._create_result(self.problem)
-        self._delete_tmpdir()
-
         walltime = time.time() - start_time
+
+        result = self._create_result(walltime)
         n_eval_total = self.n_eval_total
         if len(result.optimize_result):
             logger.info(
@@ -379,72 +382,60 @@ class SacessOptimizer:
             worker_result.n_eval for worker_result in self.worker_results
         )
 
-    def _create_result(self, problem: Problem) -> pypesto.Result:
-        """Create result object.
-
-        Creates an overall Result object from the results saved by the workers.
-        """
-        # gather results from workers
+    def _create_result(self, walltime: float) -> pypesto.Result:
+        """Create result object."""
         result = pypesto.Result()
-        retry_after_sleep = True
-        for worker_idx in range(self.num_workers):
-            tmp_result_filename = SacessWorker.get_temp_result_filename(
-                worker_idx, self._tmpdir
-            )
-            tmp_result = None
-            try:
-                tmp_result = read_result(
-                    tmp_result_filename, problem=False, optimize=True
-                )
-            except FileNotFoundError:
-                # wait and retry, maybe the file wasn't found due to
-                #  some filesystem latency issues
-                if retry_after_sleep:
-                    time.sleep(5)
-                    # waiting once is enough - don't wait for every worker
-                    retry_after_sleep = False
+        result.problem = self.problem
 
-                    try:
-                        tmp_result = read_result(
-                            tmp_result_filename, problem=False, optimize=True
-                        )
-                    except FileNotFoundError:
-                        logger.error(
-                            f"Worker {worker_idx} did not produce a result."
-                        )
-                        continue
-                else:
-                    logger.error(
-                        f"Worker {worker_idx} did not produce a result."
-                    )
-                    continue
+        monotonic_traces = merge_monotonic_traces(
+            time_traces=[
+                np.asarray(wr.history.get_time_trace())
+                for wr in self.worker_results
+            ],
+            fx_traces=[
+                np.asarray(wr.history.get_fval_trace())
+                for wr in self.worker_results
+            ],
+            x=[
+                np.asarray(wr.history.get_x_trace())
+                for wr in self.worker_results
+            ],
+        )
+        history = MemoryHistory()
+        C = pypesto.C
+        history._trace[C.FVAL] = monotonic_traces["fx"]
+        history._trace[C.TIME] = monotonic_traces["time"]
+        history._trace[C.X] = monotonic_traces["x"]
 
-            if tmp_result:
-                result.optimize_result.append(
-                    tmp_result.optimize_result,
-                    sort=False,
-                    prefix=f"{worker_idx}-",
-                )
+        history._n_fval = self.n_eval_total
+        # TODO: n_grad, n_hess
 
-        result.optimize_result.sort()
-        result.problem = problem
+        best_worker_result = min(
+            self.worker_results,
+            key=lambda wr: wr.fx,
+        )
 
+        global_best = OptimizerResult(
+            x=best_worker_result.x,
+            fval=best_worker_result.fx,
+            # TODO: n_grad, n_hess
+            n_fval=self.n_eval_total,
+            exitflag=self.exit_flag,
+            history=history,
+            time=walltime,
+        )
+        result.optimize_result.append(global_best)
         return result
 
-    def _delete_tmpdir(self):
-        """Delete the temporary files and the temporary directory if empty."""
-        for worker_idx in range(self.num_workers):
-            filename = SacessWorker.get_temp_result_filename(
-                worker_idx, self._tmpdir
-            )
-            with suppress(FileNotFoundError):
-                os.remove(filename)
+    @staticmethod
+    def get_autosave_path(base_dir: Path, worker_idx: int) -> Path | None:
+        """Get the path of the autosave file for the given worker."""
+        if base_dir is None:
+            return None
 
-        # delete tmpdir if empty
-        try:
-            self._tmpdir.rmdir()
-        except OSError:
-            pass
+        return (
+            base_dir / f"SacessOptimizer_worker_{worker_idx:02d}_autosave.h5"
+        )
 
 
 class SacessManager:
@@ -663,7 +654,7 @@ class SacessWorker:
     :ivar logger: A Logger instance.
     :ivar _loglevel: Logging level for sacess
     :ivar _ess_loglevel: Logging level for ESS runs
-    :ivar _tmp_result_file: Path of a temporary file to be created.
+    :ivar _autosave_file: Path of the autosave file to be created.
     """
 
     def __init__(
@@ -674,7 +665,7 @@ class SacessWorker:
         max_walltime_s: float = np.inf,
         loglevel: int = logging.INFO,
         ess_loglevel: int = logging.WARNING,
-        tmp_result_file: str = None,
+        autosave_file: Path = None,
         options: SacessOptions = None,
         start_time: float | None = None,
     ):
@@ -692,7 +683,7 @@ class SacessWorker:
         self._loglevel = loglevel
         self._ess_loglevel = ess_loglevel
         self.logger = None
-        self._tmp_result_file = tmp_result_file
+        self._autosave_file = autosave_file
         self._refset: RefSet | None = None
         self._options = options or SacessOptions()
 
@@ -820,18 +811,21 @@ class SacessWorker:
         )
 
         ess = ESSOptimizer(**ess_kwargs)
-        if self._tmp_result_file:
-            ess.history = Hdf5History(
-                id="0",
-                file=self._tmp_result_file,
-                options=HistoryOptions(trace_record=True, trace_save_iter=1),
-            )
 
         ess.logger = self.logger.getChild(f"sacess-{self._worker_idx:02d}-ess")
         ess.logger.setLevel(self._ess_loglevel)
 
+        if self._autosave_file:
+            history = Hdf5History(
+                id="0",
+                file=self._autosave_file,
+                options=HistoryOptions(trace_record=True, trace_save_iter=1),
+            )
+        else:
+            history = None
+
         ess._initialize_minimize(
-            refset=self._refset, start_time=self._start_time
+            refset=self._refset, start_time=self._start_time, history=history
         )
 
         return ess
@@ -997,20 +991,20 @@ class SacessWorker:
 
         We save the current best solution and the local optimizer results.
         """
-        if not self._tmp_result_file:
+        if not self._autosave_file:
             return
 
         t_start = time.time()
 
         # save problem in first iteration
         if ess.n_iter == 1:
-            pypesto_problem_writer = ProblemHDF5Writer(self._tmp_result_file)
+            pypesto_problem_writer = ProblemHDF5Writer(self._autosave_file)
             pypesto_problem_writer.write(
                 ess.evaluator.problem, overwrite=False
             )
 
         # save new local solutions
-        opt_res_writer = OptimizationResultHDF5Writer(self._tmp_result_file)
+        opt_res_writer = OptimizationResultHDF5Writer(self._autosave_file)
         for i in range(
             last_saved_local_solution + 1, len(ess.local_solutions)
         ):
@@ -1035,13 +1029,9 @@ class SacessWorker:
 
         t_save = time.time() - t_start
         self.logger.debug(
-            f"Worker {self._worker_idx} autosave to {self._tmp_result_file} "
+            f"Worker {self._worker_idx} autosave to {self._autosave_file} "
             f"took {t_save:.2f}s."
         )
-
-    @staticmethod
-    def get_temp_result_filename(worker_idx: int, tmpdir: str | Path) -> str:
-        return str(Path(tmpdir, f"sacess-{worker_idx:02d}_tmp.h5").absolute())
 
 
 def _run_worker(
@@ -1561,7 +1551,6 @@ def _memory_history_from_history(history: HistoryBase) -> MemoryHistory:
     memory_history = MemoryHistory()
     memory_history._n_fval = history.n_fval
     memory_history._n_grad = history.n_grad
-    memory_history._n_iter = history.n_iter
     memory_history._start_time = history.start_time
 
     for key in memory_history.ALL_KEYS:

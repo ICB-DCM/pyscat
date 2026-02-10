@@ -14,7 +14,6 @@ __all__ = ["RefSet"]
 class RefSet:
     """Scatter search reference set.
 
-    :ivar dim: Reference set size
     :ivar evaluator: Function evaluator
     :ivar x: Parameters in the reference set
     :ivar fx: Function values at the parameters in the reference set
@@ -25,53 +24,51 @@ class RefSet:
 
     def __init__(
         self,
-        dim: int,
+        *,
+        x: np.ndarray,
+        fx: np.ndarray,
         evaluator: FunctionEvaluator,
-        x: np.ndarray | None = None,
-        fx: np.ndarray | None = None,
     ):
         """Construct.
 
-        :param dim:
-            Reference set size
         :param evaluator:
             Function evaluator
         :param x:
-            Initial RefSet parameters.
+            Initial RefSet parameters (shape: (dim, problem.dim)).
         :param fx:
-            Function values corresponding to entries in x. Must be provided if
-            and only if ``x`` is not ``None``.
+            Function values corresponding to entries in x (shape: (dim,)).
         """
-        if (x is not None and fx is None) or (x is None and fx is not None):
-            raise ValueError(
-                "Either both or neither of `x` and `fx` should be provided"
-            )
-
-        if dim < 3:
+        if x.shape[0] < 3:
             raise ValueError("RefSet dimension has to be at least 3.")
-        self.dim = dim
         self.evaluator = evaluator
         # \epsilon in [PenasGon2017]_
         self.proximity_threshold = 1e-3
 
-        if x is None:
-            self.x = self.fx = None
-        else:
-            self.x = x
-            self.fx = fx
+        self.x = x
+        self.fx = fx
 
-        self.n_stuck = np.zeros(shape=[dim], dtype=int)
+        self.n_stuck = np.zeros(shape=[self.dim], dtype=int)
         self.attributes: dict[Any, np.ndarray] = {}
 
-    def __repr__(self):
-        fx = (
-            f", fx=[{np.min(self.fx)} ... {np.max(self.fx)}]"
-            if self.fx is not None and len(self.fx) >= 2
-            else ""
-        )
+    @staticmethod
+    def from_parameters(
+        x: np.ndarray,
+        evaluator: FunctionEvaluator,
+    ) -> RefSet:
+        """Create a RefSet from the given parameters."""
+        fx = evaluator.multiple(x)
+        return RefSet(evaluator=evaluator, x=x, fx=fx)
+
+    @property
+    def dim(self) -> int:
+        """Number of points in the RefSet."""
+        return self.x.shape[0]
+
+    def __repr__(self) -> str:
+        fx = f", fx=[{np.min(self.fx)} ... {np.max(self.fx)}]"
         return f"RefSet(dim={self.dim}{fx})"
 
-    def sort(self):
+    def sort(self) -> None:
         """Sort RefSet by quality."""
         order = np.argsort(self.fx)
         self.fx = self.fx[order]
@@ -80,22 +77,32 @@ class RefSet:
         for attribute_name, attribute_values in self.attributes.items():
             self.attributes[attribute_name] = attribute_values[order]
 
-    def initialize_random(
-        self,
-        n_diverse: int,
-    ):
+    @staticmethod
+    def from_random(
+        *, dim: int, n_diverse: int, evaluator: FunctionEvaluator
+    ) -> RefSet:
         """Create an initial reference set from random parameters.
 
         Sample ``n_diverse`` random points, populate half of the RefSet using
         the best solutions and fill the rest with random points.
         """
         # sample n_diverse points
-        x_diverse, fx_diverse = self.evaluator.multiple_random(n_diverse)
-        self.initialize_from_array(x_diverse=x_diverse, fx_diverse=fx_diverse)
+        x_diverse, fx_diverse = evaluator.multiple_random(n_diverse)
+        return RefSet.from_diverse(
+            x_diverse=x_diverse,
+            fx_diverse=fx_diverse,
+            evaluator=evaluator,
+            dim=dim,
+        )
 
-    def initialize_from_array(
-        self, x_diverse: np.ndarray, fx_diverse: np.ndarray
-    ):
+    @staticmethod
+    def from_diverse(
+        *,
+        dim: int,
+        x_diverse: np.ndarray,
+        fx_diverse: np.ndarray,
+        evaluator: FunctionEvaluator,
+    ) -> RefSet:
         """Create an initial reference set using the provided points.
 
         Populate half of the RefSet using the best given solutions and fill the
@@ -105,29 +112,29 @@ class RefSet:
             raise ValueError(
                 "Lengths of `x_diverse` and `fx_diverse` do not match."
             )
-        if self.dim > len(x_diverse):
+        if dim > len(x_diverse):
             raise ValueError(
                 "Cannot create RefSet with dimension "
-                f"{self.dim} from only {len(x_diverse)} points."
+                f"{dim} from only {len(x_diverse)} points."
             )
 
-        self.fx = np.full(shape=(self.dim,), fill_value=np.inf)
-        self.x = np.full(
-            shape=(self.dim, self.evaluator.problem.dim), fill_value=np.nan
-        )
+        fx = np.full(shape=(dim,), fill_value=np.inf)
+        x = np.full(shape=(dim, evaluator.problem.dim), fill_value=np.nan)
 
         # create initial refset with 50% best values
-        num_best = int(self.dim / 2)
+        num_best = int(dim / 2)
         order = np.argsort(fx_diverse)
-        self.x[:num_best] = x_diverse[order[:num_best]]
-        self.fx[:num_best] = fx_diverse[order[:num_best]]
+        x[:num_best] = x_diverse[order[:num_best]]
+        fx[:num_best] = fx_diverse[order[:num_best]]
 
         # ... and 50% random points
         random_idxs = np.random.choice(
-            order[num_best:], size=self.dim - num_best, replace=False
+            order[num_best:], size=dim - num_best, replace=False
         )
-        self.x[num_best:] = x_diverse[random_idxs]
-        self.fx[num_best:] = fx_diverse[random_idxs]
+        x[num_best:] = x_diverse[random_idxs]
+        fx[num_best:] = fx_diverse[random_idxs]
+
+        return RefSet(evaluator=evaluator, x=x, fx=fx)
 
     def prune_too_close(self):
         """Prune too similar RefSet members.
@@ -211,18 +218,16 @@ class RefSet:
             self.n_stuck = self.n_stuck[:new_dim]
             for attribute_name, attribute_values in self.attributes.items():
                 self.attributes[attribute_name] = attribute_values[:new_dim]
-            self.dim = new_dim
         else:
             # grow
             n_new = new_dim - self.dim
             new_x, new_fx = self.evaluator.multiple_random(n_new)
             self.fx = np.append(self.fx, new_fx)
             self.x = np.vstack((self.x, new_x))
-            self.n_stuck = np.append(self.n_stuck, np.zeros(shape=(n_new)))
+            self.n_stuck = np.append(self.n_stuck, np.zeros(shape=(n_new,)))
             for attribute_name, attribute_values in self.attributes.items():
                 self.attributes[attribute_name] = np.append(
                     attribute_values,
                     np.zeros(shape=n_new, dtype=attribute_values.dtype),
                 )
-            self.dim = new_dim
             self.sort()

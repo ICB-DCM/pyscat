@@ -52,7 +52,7 @@ class FunctionEvaluator:
         self.n_eval += 1
         return self.problem.objective(x)
 
-    def multiple(self, xs: Sequence[np.ndarray]) -> np.ndarray:
+    def multiple(self, xs: Sequence[np.ndarray] | np.ndarray) -> np.ndarray:
         """Evaluate objective at several points.
 
         :param xs: Sequence of parameter vectors at which the objective is to

@@ -41,26 +41,18 @@ class FakeEvaluator:
 def test_constructor_invalid_combinations():
     prob = FakeProblem(dim=2)
     ev = FakeEvaluator(prob)
-    x = np.zeros((3, prob.dim))
-    fx = None
-    with pytest.raises(
-        ValueError, match="both or neither of `x` and `fx` should be provided"
-    ):
-        RefSet(dim=3, evaluator=ev, x=x, fx=fx)
 
     with pytest.raises(ValueError, match="at least 3"):
-        RefSet(dim=2, evaluator=ev)  # dim < 3 not allowed
+        RefSet(evaluator=ev, fx=np.array([1, 2]), x=np.array([[0, 0], [1, 1]]))
 
 
 def test_repr_with_and_without_fx():
     prob = FakeProblem(dim=2)
     ev = FakeEvaluator(prob)
-    rs = RefSet(dim=3, evaluator=ev)
-    assert repr(rs) == "RefSet(dim=3)"
 
     # with fx provided
     assert (
-        repr(RefSet(10, None, x=np.zeros(10), fx=np.arange(10)))
+        repr(RefSet(evaluator=ev, x=np.zeros(10), fx=np.arange(10)))
         == "RefSet(dim=10, fx=[0 ... 9])"
     )
 
@@ -68,12 +60,14 @@ def test_repr_with_and_without_fx():
 def test_initialize_from_array_and_random():
     prob = FakeProblem(dim=2)
     ev = FakeEvaluator(prob, seed=1)
-    rs = RefSet(dim=6, evaluator=ev)
 
     x_diverse, fx_diverse = ev.multiple_random(10)
-    rs.initialize_from_array(x_diverse=x_diverse, fx_diverse=fx_diverse)
-    assert rs.x.shape == (6, prob.dim)
-    assert rs.fx.shape == (6,)
+    rs = RefSet.from_diverse(
+        dim=6, x_diverse=x_diverse, fx_diverse=fx_diverse, evaluator=ev
+    )
+    assert rs.dim == 6
+    assert rs.x.shape == (rs.dim, prob.dim)
+    assert rs.fx.shape == (rs.dim,)
 
     # first half must be the best `num_best` items from fx_diverse
     order = np.argsort(fx_diverse)
@@ -88,14 +82,15 @@ def test_initialize_from_array_and_random():
 def test_initialize_from_array_errors():
     prob = FakeProblem(dim=2)
     ev = FakeEvaluator(prob)
-    rs = RefSet(dim=4, evaluator=ev)
 
     x_diverse, fx_diverse = ev.multiple_random(3)  # too few points
     with pytest.raises(
         ValueError,
         match="Cannot create RefSet with dimension 4 from only 3 points",
     ):
-        rs.initialize_from_array(x_diverse=x_diverse, fx_diverse=fx_diverse)
+        RefSet.from_diverse(
+            x_diverse=x_diverse, fx_diverse=fx_diverse, dim=4, evaluator=ev
+        )
 
     # mismatched lengths
     x_diverse, fx_diverse = ev.multiple_random(5)
@@ -103,8 +98,11 @@ def test_initialize_from_array_errors():
         ValueError,
         match="Lengths of `x_diverse` and `fx_diverse` do not match",
     ):
-        rs.initialize_from_array(
-            x_diverse=x_diverse, fx_diverse=fx_diverse[:-1]
+        RefSet.from_diverse(
+            x_diverse=x_diverse,
+            fx_diverse=fx_diverse[:-1],
+            dim=4,
+            evaluator=ev,
         )
 
 
@@ -112,7 +110,7 @@ def test_sort_and_attributes():
     prob = FakeProblem(dim=2)
     ev = FakeEvaluator(prob, seed=2)
     x, fx = ev.multiple_random(6)
-    rs = RefSet(dim=6, evaluator=ev, x=x.copy(), fx=fx.copy())
+    rs = RefSet(evaluator=ev, x=x.copy(), fx=fx.copy())
     rs.add_attribute("score", fx.copy())
 
     rs.sort()
@@ -125,7 +123,7 @@ def test_sort_and_attributes():
 def test_add_attribute_length_mismatch():
     prob = FakeProblem(dim=2)
     ev = FakeEvaluator(prob)
-    rs = RefSet(dim=4, evaluator=ev)
+    rs = RefSet.from_random(n_diverse=10, evaluator=ev, dim=4)
     with pytest.raises(ValueError, match="Attribute length does not match"):
         rs.add_attribute("bad", np.zeros(3))
 
@@ -134,8 +132,7 @@ def test_update_and_replace_by_random():
     prob = FakeProblem(dim=2)
     ev = FakeEvaluator(prob, seed=3)
     # initialize with random points
-    rs = RefSet(dim=4, evaluator=ev)
-    rs.initialize_random(n_diverse=8)
+    rs = RefSet.from_random(dim=4, evaluator=ev, n_diverse=8)
 
     # update
     new_x = np.full(prob.dim, 0.42)
@@ -164,7 +161,7 @@ def test_prune_too_close_replaces_close_points():
         ]
     )
     fx = np.array([0.5, 0.50000001, 0.02])
-    rs = RefSet(dim=3, evaluator=ev, x=x.copy(), fx=fx.copy())
+    rs = RefSet(evaluator=ev, x=x.copy(), fx=fx.copy())
     # first and second points are below this threshold
     rs.proximity_threshold = 1e-6
     rs.prune_too_close()
@@ -183,8 +180,7 @@ def test_resize_shrink_and_grow_and_attributes_preserved():
     prob = FakeProblem(dim=3)
     ev = FakeEvaluator(prob, seed=5)
     # start with dim=6
-    rs = RefSet(dim=6, evaluator=ev)
-    rs.initialize_random(12)
+    rs = RefSet.from_random(dim=6, evaluator=ev, n_diverse=12)
     rs.add_attribute("counter", np.arange(6).astype(float))
     # shrink
     rs.resize(3)

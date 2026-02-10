@@ -312,11 +312,12 @@ class ESSOptimizer:
                 n_procs=self.n_procs,
             )
 
-            self.refset = RefSet(dim=self.dim_refset, evaluator=self.evaluator)
             # Initial RefSet generation
             # [EgeaMar2010]_ 2.1
-            self.refset.initialize_random(
-                n_diverse=self.n_diverse or 10 * problem.dim
+            self.refset = RefSet.from_random(
+                dim=self.dim_refset,
+                n_diverse=self.n_diverse or 10 * problem.dim,
+                evaluator=self.evaluator,
             )
         else:
             self.refset = refset

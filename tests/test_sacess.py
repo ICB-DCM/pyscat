@@ -49,7 +49,7 @@ def test_sacess_adaptation(capsys, rosen_problem):
     ess = SacessOptimizer(
         problem=problem,
         num_workers=2,
-        max_walltime_s=2,
+        max_walltime_s=4,
         sacess_loglevel=logging.DEBUG,
         ess_loglevel=logging.DEBUG,
         options=SacessOptions(

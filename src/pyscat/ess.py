@@ -140,6 +140,7 @@ class ESSOptimizer:
         n_threads=None,
         max_walltime_s=None,
         result_includes_refset: bool = False,
+        result_includes_local_solutions: bool = True,
     ):
         r"""Initialize.
 
@@ -194,8 +195,10 @@ class ESSOptimizer:
             Mutually exclusive with `n_procs`.
         :param result_includes_refset:
             Whether the :meth:`minimize` result should include the final
-            RefSet, or just the local search results and the overall best
-            parameters.
+            RefSet.
+        :param result_includes_local_solutions:
+            Whether the :meth:`minimize` result should include the local search
+            results (if any).
         """
         if max_eval is None and max_walltime_s is None and max_iter is None:
             # in this case, we'd run forever
@@ -236,6 +239,7 @@ class ESSOptimizer:
             f"{self.__class__.__name__}-{id(self)}"
         )
         self._result_includes_refset = result_includes_refset
+        self._result_includes_local_solutions = result_includes_local_solutions
 
     def _initialize(self):
         """(Re-)Initialize."""
@@ -427,11 +431,12 @@ class ESSOptimizer:
         optimizer_result.update_to_full(result.problem)
         result.optimize_result.append(optimizer_result)
 
-        # save local solutions
-        for i, optimizer_result in enumerate(self.local_solutions):
-            i_result += 1
-            optimizer_result.id = f"Local solution {i}"
-            result.optimize_result.append(optimizer_result)
+        if self._result_includes_local_solutions:
+            # save local solutions
+            for i, optimizer_result in enumerate(self.local_solutions):
+                i_result += 1
+                optimizer_result.id = f"Local solution {i}"
+                result.optimize_result.append(optimizer_result)
 
         if self._result_includes_refset:
             # save refset

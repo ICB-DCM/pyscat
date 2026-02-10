@@ -437,6 +437,7 @@ class ESSOptimizer:
             x=self.x_best,
             fval=self.fx_best,
             message="Global best",
+            history=self.history,
             **common_result_fields,
         )
         optimizer_result.update_to_full(result.problem)

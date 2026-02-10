@@ -4,7 +4,7 @@ import numpy as np
 import numpy.testing as npt
 import pypesto
 import pytest
-from pypesto.history import Hdf5History, HistoryOptions
+from pypesto.history import Hdf5History, HistoryOptions, MemoryHistory
 from pypesto.optimize import FidesOptimizer
 
 from pyscat import (
@@ -33,6 +33,10 @@ def test_ess_finds_minimum(problem_info):
     assert best_fx >= expected_best_fx, (
         f"Best fx {best_fx} is less than expected minimum {expected_best_fx}"
     )
+
+    global_best_hist = res.optimize_result[0].history
+    assert isinstance(global_best_hist, MemoryHistory)
+    assert global_best_hist.get_fval_trace()[-1] == best_fx
 
 
 def test_ess_result_contains_refset(rosen_problem):

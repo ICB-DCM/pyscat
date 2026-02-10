@@ -22,7 +22,12 @@ from warnings import warn
 import numpy as np
 import pypesto
 import pypesto.optimize
-from pypesto.history import MemoryHistory
+from pypesto.history import (
+    Hdf5History,
+    HistoryBase,
+    HistoryOptions,
+    MemoryHistory,
+)
 from pypesto.problem import Problem
 from pypesto.store.read_from_hdf5 import read_result
 from pypesto.store.save_to_hdf5 import (
@@ -761,10 +766,23 @@ class SacessWorker:
             try:
                 ess.history.finalize(exitflag=ess.exit_flag.name)
                 ess._report_final()
+
+                if not isinstance(ess.history, MemoryHistory):
+                    try:
+                        history = _memory_history_from_history(ess.history)
+                    except Exception as e:
+                        self.logger.exception(
+                            f"Worker {self._worker_idx} failed to convert "
+                            f"history: {e}"
+                        )
+                        history = MemoryHistory()
+                else:
+                    history = ess.history
+
                 worker_result = SacessWorkerResult(
                     x=ess.x_best,
                     fx=ess.fx_best,
-                    history=ess.history,
+                    history=history,
                     n_eval=ess.evaluator.n_eval,
                     n_iter=ess.n_iter,
                     n_local=len(ess.local_solutions),
@@ -799,6 +817,13 @@ class SacessWorker:
         )
 
         ess = ESSOptimizer(**ess_kwargs)
+        if self._tmp_result_file:
+            ess.history = Hdf5History(
+                id="0",
+                file=self._tmp_result_file,
+                options=HistoryOptions(trace_record=True, trace_save_iter=1),
+            )
+
         ess.logger = self.logger.getChild(f"sacess-{self._worker_idx:02d}-ess")
         ess.logger.setLevel(self._ess_loglevel)
 
@@ -962,7 +987,7 @@ class SacessWorker:
     def _autosave(self, ess: ESSOptimizer, last_saved_local_solution: int):
         """Save intermediate results.
 
-        If a temporary result file is set, save the (part of) the current state
+        If a temporary result file is set, save (parts of) the current state
         of the ESS to that file.
 
         We save the current best solution and the local optimizer results.
@@ -979,6 +1004,7 @@ class SacessWorker:
                 ess.evaluator.problem, overwrite=False
             )
 
+        # save new local solutions
         opt_res_writer = OptimizationResultHDF5Writer(self._tmp_result_file)
         for i in range(
             last_saved_local_solution + 1, len(ess.local_solutions)
@@ -991,7 +1017,7 @@ class SacessWorker:
 
         # save the current best solution
         optimizer_result = pypesto.OptimizerResult(
-            id=str(len(ess.local_solutions) + ess.n_iter),
+            id="0",
             x=ess.x_best,
             fval=ess.fx_best,
             message=f"Global best (iteration {ess.n_iter})",
@@ -1000,9 +1026,7 @@ class SacessWorker:
             optimizer=str(ess),
         )
         optimizer_result.update_to_full(ess.evaluator.problem)
-        opt_res_writer.write_optimizer_result(
-            optimizer_result, overwrite=False
-        )
+        opt_res_writer.write_optimizer_result(optimizer_result, overwrite=True)
 
         t_save = time.time() - t_start
         self.logger.debug(
@@ -1518,3 +1542,24 @@ class SacessOptions:
             raise ValueError(
                 "worker_acceptance_threshold must be non-negative."
             )
+
+
+def _memory_history_from_history(history: HistoryBase) -> MemoryHistory:
+    """Convert a general HistoryBase to MemoryHistory.
+
+    :param history: The history to convert.
+    :return: The converted history.
+    """
+    memory_history = MemoryHistory()
+    memory_history._n_fval = history.n_fval
+    memory_history._n_grad = history.n_grad
+    memory_history._n_iter = history.n_iter
+    memory_history._start_time = history.start_time
+
+    for key in memory_history.ALL_KEYS:
+        meth = f"get_{key}_trace"
+        if hasattr(history, meth):
+            trace = getattr(history, meth)()
+            memory_history._trace[key] = trace
+
+    return memory_history

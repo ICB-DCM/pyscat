@@ -32,6 +32,48 @@ def test_ess_finds_minimum(problem_info):
     )
 
 
+def test_ess_result_contains_refset(rosen_problem):
+    problem = rosen_problem
+    ess = ESSOptimizer(
+        max_walltime_s=2, dim_refset=10, result_includes_refset=True
+    )
+    res = ess.minimize(problem)
+
+    assert len(res.optimize_result) == 11
+
+    ess = ESSOptimizer(
+        max_walltime_s=2, dim_refset=10, result_includes_refset=False
+    )
+    res = ess.minimize(problem)
+
+    assert len(res.optimize_result) == 1
+
+
+def test_result_contains_local_solutions(rosen_problem):
+    problem = rosen_problem
+    ess = ESSOptimizer(
+        max_walltime_s=2,
+        dim_refset=10,
+        local_optimizer=FidesOptimizer(),
+        result_includes_local_solutions=True,
+        result_includes_refset=False,
+    )
+    res = ess.minimize(problem)
+    assert len(ess.local_solutions) > 0
+    assert len(res.optimize_result) == 1 + len(ess.local_solutions)
+
+    ess = ESSOptimizer(
+        max_walltime_s=2,
+        dim_refset=10,
+        local_optimizer=FidesOptimizer(),
+        result_includes_local_solutions=False,
+        result_includes_refset=False,
+    )
+    res = ess.minimize(problem)
+    assert len(ess.local_solutions) > 0
+    assert len(res.optimize_result) == 1
+
+
 def test_ess_multiprocess(rosen_problem):
     from fides.constants import Options as FidesOptions
 

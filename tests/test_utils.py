@@ -1,7 +1,7 @@
 import numpy as np
 from pypesto.history.memory import MemoryHistory
 
-from pyscat.plot import monotonic_history
+from pyscat.utils import monotonic_history
 
 
 def test_monotonic_history():

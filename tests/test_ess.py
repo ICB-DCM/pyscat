@@ -1,7 +1,10 @@
+import tempfile
+
 import numpy as np
 import numpy.testing as npt
 import pypesto
 import pytest
+from pypesto.history import Hdf5History, HistoryOptions
 from pypesto.optimize import FidesOptimizer
 
 from pyscat import (
@@ -210,3 +213,21 @@ def test_fail_on_x_guesses(rosen_problem):
 
     problem.set_x_guesses(np.empty((0, problem.dim_full)))
     ess.minimize(problem)
+
+
+def test_ess_history(rosen_problem):
+    """Test passing custom history to ESSOptimizer."""
+    problem = rosen_problem
+    ess = ESSOptimizer(max_iter=5, dim_refset=10, max_walltime_s=1)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        history = Hdf5History(
+            file=tmpdir + "/history.hdf5",
+            id="0",
+            options=HistoryOptions(trace_record=True, trace_save_iter=1),
+        )
+        res = ess.minimize(problem, history=history)
+        assert len(history)
+        npt.assert_allclose(
+            history.get_x_trace()[-1], res.optimize_result[0].x
+        )

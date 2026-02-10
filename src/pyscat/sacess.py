@@ -745,7 +745,7 @@ class SacessWorker:
             self._autosave(ess, last_saved_local_solution)
             last_saved_local_solution = len(ess.local_solutions) - 1
 
-            self._cooperate()
+            self._cooperate(ess)
             self._maybe_adapt(problem, ess.evaluator.n_eval)
 
             t_left = self._max_walltime_s - (time.time() - self._start_time)
@@ -833,7 +833,7 @@ class SacessWorker:
 
         return ess
 
-    def _cooperate(self):
+    def _cooperate(self, ess: ESSOptimizer) -> None:
         """Cooperation step."""
         # try to obtain a new solution from manager
         recv_x, recv_fx = self._manager.get_best_solution()
@@ -856,6 +856,8 @@ class SacessWorker:
             self._best_known_fx = recv_fx
             self._n_received_solutions += 1
             self.replace_solution(self._refset, x=recv_x, fx=recv_fx)
+
+            ess._maybe_update_global_best(recv_x, recv_fx)
 
     def _maybe_adapt(self, problem: Problem, n_eval: int):
         """Perform the adaptation step if needed.

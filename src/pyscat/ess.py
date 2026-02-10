@@ -15,7 +15,7 @@ from typing import Protocol
 import numpy as np
 import pypesto.optimize
 from pypesto import OptimizerResult, Problem
-from pypesto.history import MemoryHistory
+from pypesto.history import HistoryBase, MemoryHistory
 
 from .function_evaluator import FunctionEvaluator, create_function_evaluator
 from .refset import RefSet
@@ -238,6 +238,7 @@ class ESSOptimizer:
         self.logger = logging.getLogger(
             f"{self.__class__.__name__}-{id(self)}"
         )
+        self.history: HistoryBase | None = None
         self._result_includes_refset = result_includes_refset
         self._result_includes_local_solutions = result_includes_local_solutions
 
@@ -263,13 +264,13 @@ class ESSOptimizer:
         self.exit_flag: ESSExitFlag = ESSExitFlag.DID_NOT_RUN
         self.evaluator: FunctionEvaluator | None = None
         self._start_time: float | None = None
-        self.history: MemoryHistory = MemoryHistory()
 
     def _initialize_minimize(
         self,
         problem: Problem = None,
         refset: RefSet | None = None,
         start_time: float | None = None,
+        history: HistoryBase | None = None,
     ):
         """(Re-)initialize for optimizations.
 
@@ -303,6 +304,8 @@ class ESSOptimizer:
             )
 
         _check_valid_bounds(problem)
+
+        self.history = history if history is not None else MemoryHistory()
 
         # generate initial RefSet if not provided
         if refset is None:
@@ -341,6 +344,7 @@ class ESSOptimizer:
         self,
         problem: Problem = None,
         refset: RefSet | None = None,
+        history: HistoryBase | None = None,
     ) -> pypesto.Result:
         """Minimize the given objective.
 
@@ -348,8 +352,15 @@ class ESSOptimizer:
             Problem to run ESS on.
         :param refset:
             The initial RefSet or ``None`` to auto-generate.
+        :param history:
+            History object to track the best values found so far.
+
+        :returns:
+            The optimization result.
         """
-        self._initialize_minimize(problem=problem, refset=refset)
+        self._initialize_minimize(
+            problem=problem, refset=refset, history=history
+        )
 
         # [PenasGon2017]_ Algorithm 1
         while self._keep_going():

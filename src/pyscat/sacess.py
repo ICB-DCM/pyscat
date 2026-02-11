@@ -237,7 +237,7 @@ class SacessOptimizer:
         self,
         local_optimizer: None
         | pypesto.optimize.Optimizer
-        | Callable[..., pypesto.optimize.Optimizer] = True,
+        | Callable[..., pypesto.optimize.Optimizer],
     ):
         """Set a local solver for all workers.
 

@@ -20,6 +20,12 @@ __all__ = [
 ]
 
 
+class TooManyFailuresError(RuntimeError):
+    """
+    Raised when too many failures to obtain a finite objective value occur.
+    """
+
+
 class FunctionEvaluator:
     """Wrapper for optimization problem and startpoint method.
 
@@ -43,6 +49,10 @@ class FunctionEvaluator:
         self.problem: Problem = problem
         self.startpoint_method: StartpointMethod = problem.startpoint_method
         self.n_eval: int = 0
+        # Maximum number of consecutive failures to obtain a finite objective
+        #  value when sampling random points.
+        #  This is to prevent infinite loops.
+        self.max_failures: int = 1000
 
     def single(self, x: np.ndarray) -> float:
         """Evaluate objective at point ``x``.
@@ -72,10 +82,18 @@ class FunctionEvaluator:
         :return: Tuple of the generated parameter vector and the respective
             function value.
         """
-        x = fx = np.nan
-        while not np.isfinite(fx):
+        for _ in range(self.max_failures):
             x = self.startpoint_method(n_starts=1, problem=self.problem)[0]
             fx = self.single(x)
+
+            if np.isfinite(fx):
+                break
+        else:
+            raise TooManyFailuresError(
+                f"Failed to obtain a finite objective value after "
+                f"{self.max_failures} attempts."
+            )
+
         return x, fx
 
     def multiple_random(self, n: int) -> tuple[np.ndarray, np.ndarray]:
@@ -90,12 +108,21 @@ class FunctionEvaluator:
         """
         fxs = np.full(shape=n, fill_value=np.nan)
         xs = np.full(shape=(n, self.problem.dim), fill_value=np.nan)
+        n_failures = -1
         while not np.isfinite(fxs).all():
             retry_indices = np.argwhere(~np.isfinite(fxs)).flatten()
             xs[retry_indices] = self.startpoint_method(
                 n_starts=retry_indices.size, problem=self.problem
             )
             fxs[retry_indices] = self.multiple(xs[retry_indices])
+            # we're not exactly counting consecutive objective evaluation
+            # failures here, but this is good enough to prevent infinite loops.
+            n_failures += 1
+            if n_failures >= self.max_failures:
+                raise TooManyFailuresError(
+                    f"Failed to obtain finite objective values "
+                    f"after {self.max_failures} attempts."
+                )
         return xs, fxs
 
     def reset_counter(self):

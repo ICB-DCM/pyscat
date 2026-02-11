@@ -17,7 +17,11 @@ import pypesto.optimize
 from pypesto import OptimizerResult, Problem
 from pypesto.history import HistoryBase, MemoryHistory
 
-from .function_evaluator import FunctionEvaluator, create_function_evaluator
+from .function_evaluator import (
+    FunctionEvaluator,
+    TooManyFailuresError,
+    create_function_evaluator,
+)
 from .refset import RefSet
 
 logger = logging.getLogger(__name__)
@@ -40,6 +44,9 @@ class ESSExitFlag(int, enum.Enum):
     MAX_EVAL = -2
     #: Exited after exhausting wall-time budget
     MAX_TIME = -3
+    #: Termination because of too many consecutive objective function
+    #  evaluation failures
+    TOO_MANY_FAILURES = -4
     #: Termination because of other reasons than exit criteria
     ERROR = -99
 
@@ -364,16 +371,20 @@ class ESSOptimizer:
             tracked and thus set to 0 in the result, even if a local optimizer
             is used that performs gradient/Hessian evaluations.
         """
-        self._initialize_minimize(
-            problem=problem, refset=refset, history=history
-        )
+        try:
+            self._initialize_minimize(
+                problem=problem, refset=refset, history=history
+            )
 
-        # [PenasGon2017]_ Algorithm 1
-        while self._keep_going():
-            self._do_iteration()
+            # [PenasGon2017]_ Algorithm 1
+            while self._keep_going():
+                self._do_iteration()
 
-        self._report_final()
-        self.history.finalize(exitflag=self.exit_flag.name)
+            self._report_final()
+            self.history.finalize(exitflag=self.exit_flag.name)
+        except TooManyFailuresError:
+            self.exit_flag = ESSExitFlag.TOO_MANY_FAILURES
+
         return self._create_result()
 
     def _do_iteration(self):

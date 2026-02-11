@@ -1,4 +1,5 @@
 import tempfile
+from unittest.mock import Mock
 
 import numpy as np
 import numpy.testing as npt
@@ -7,9 +8,7 @@ import pytest
 from pypesto.history import Hdf5History, HistoryOptions, MemoryHistory
 from pypesto.optimize import FidesOptimizer
 
-from pyscat import (
-    ESSOptimizer,
-)
+from pyscat import ESSExitFlag, ESSOptimizer
 from pyscat.examples import problem_info
 from pyscat.function_evaluator import FunctionEvaluatorMP
 from pyscat.refset import RefSet
@@ -235,3 +234,19 @@ def test_ess_history(rosen_problem):
         npt.assert_allclose(
             history.get_x_trace()[-1], res.optimize_result[0].x
         )
+
+
+def test_ess_objective_nan():
+    """
+    Ensure we don't get stuck in an infinite loop when the objective always
+    returns NaN.
+    """
+    objective = pypesto.objective.Objective(
+        fun=Mock(side_effect=[np.nan] * 100_000),
+    )
+    problem = pypesto.Problem(
+        objective=objective, lb=0 * np.ones((1, 2)), ub=1 * np.ones((1, 2))
+    )
+    ess = ESSOptimizer(max_iter=5, dim_refset=10, max_walltime_s=1)
+    ess.minimize(problem)
+    assert ess.exit_flag == ESSExitFlag.TOO_MANY_FAILURES

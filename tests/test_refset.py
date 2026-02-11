@@ -22,6 +22,7 @@ class FakeEvaluator:
     def __init__(self, problem: FakeProblem, seed: int = 0):
         self.problem = problem
         self.rng = np.random.default_rng(seed)
+        self.max_failures = 10**10
 
     def multiple_random(self, n: int):
         x = self.rng.uniform(

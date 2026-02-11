@@ -7,6 +7,8 @@ import numpy.testing as npt
 import pypesto
 import pytest
 import scipy
+from pypesto.history import Hdf5History
+from pypesto.store import write_result
 
 from pyscat import (
     SacessOptimizer,
@@ -61,6 +63,35 @@ def test_sacess_finds_minimum(problem_info):
             fx,
             err_msg="History contains inconsistent x and fval traces.",
         )
+
+
+def test_sacess_result_can_be_stored(rosen_problem, tmp_path):
+    """Test that the result of SacessOptimizer can be stored and loaded."""
+    problem = rosen_problem
+    save_path = Path(tmp_path) / "sacess_result.h5"
+
+    ess = SacessOptimizer(
+        problem=problem,
+        num_workers=2,
+        max_walltime_s=2,
+    )
+    res = ess.minimize()
+
+    write_result(
+        result=res,
+        filename=save_path,
+        problem=True,
+        optimize=True,
+        profile=False,
+        sample=False,
+    )
+    Hdf5History.from_history(other=ess.histories[0], file=save_path, id_="bla")
+
+    Hdf5History.from_history(
+        other=res.optimize_result[0].history,
+        file=save_path,
+        id_=res.optimize_result[0].id,
+    )
 
 
 def test_sacess_adaptation(capsys, rosen_problem):

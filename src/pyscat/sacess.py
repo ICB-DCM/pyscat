@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.metadata
 import itertools
 import logging
 import logging.handlers
@@ -387,6 +388,8 @@ class SacessOptimizer:
         result = pypesto.Result()
         result.problem = self.problem
 
+        C = pypesto.C
+
         monotonic_traces = merge_monotonic_traces(
             time_traces=[
                 np.asarray(wr.history.get_time_trace())
@@ -400,12 +403,24 @@ class SacessOptimizer:
                 np.asarray(wr.history.get_x_trace())
                 for wr in self.worker_results
             ],
+            # TODO: pypesto Hdf5History.from_history currently requires
+            #  the presence of all keys. This should be changed.
+            **{
+                k: [
+                    np.asarray(getattr(wr.history, f"get_{k}_trace")())
+                    for wr in self.worker_results
+                ]
+                for k in HistoryBase.RESULT_KEYS
+                if k != C.FVAL
+            },
         )
         history = MemoryHistory()
-        C = pypesto.C
         history._trace[C.FVAL] = monotonic_traces["fx"]
         history._trace[C.TIME] = monotonic_traces["time"]
         history._trace[C.X] = monotonic_traces["x"]
+        for k in HistoryBase.RESULT_KEYS:
+            if k not in (C.FVAL, C.TIME, C.X):
+                history._trace[k] = monotonic_traces[k]
 
         history._n_fval = self.n_eval_total
         # TODO: n_grad, n_hess
@@ -414,8 +429,15 @@ class SacessOptimizer:
             self.worker_results,
             key=lambda wr: wr.fx,
         )
-
+        package_name = __name__.split(".")[0]
+        try:
+            version = importlib.metadata.version(package_name)
+        except importlib.metadata.PackageNotFoundError:
+            version = "unknown"
+        cls = self.__class__
+        optimizer = f"{cls.__module__}.{cls.__qualname__} {version}"
         global_best = OptimizerResult(
+            id="0",
             x=best_worker_result.x,
             fval=best_worker_result.fx,
             # TODO: n_grad, n_hess
@@ -423,6 +445,8 @@ class SacessOptimizer:
             exitflag=self.exit_flag,
             history=history,
             time=walltime,
+            message=f"Global best from {cls.__qualname__} ({self.exit_flag}).",
+            optimizer=optimizer,
         )
         result.optimize_result.append(global_best)
         return result

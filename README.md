@@ -8,9 +8,7 @@
 
 > **Note**
 > This package is still under development. Documentation is incomplete,
-> and the API may change without notice.
-> For now, please use the scatter search implementation in
-> [pyPESTO](https://pypesto.readthedocs.io/en/latest/).
+> and the API may change without prior notice.
 
 PyScat currently implements two scatter-search algorithms:
 

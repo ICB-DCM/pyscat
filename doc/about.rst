@@ -11,9 +11,7 @@ for global optimization.
 .. note::
 
    This package is still under development.
-   Documentation is incomplete, and the API may change without notice.
-   For now, please use the scatter search implementations available in
-   `pyPESTO <https://pypesto.readthedocs.io/en/latest/>`_.
+   Documentation is incomplete, and the API may change without prior notice.
 
 Repository: https://github.com/ICB-DCM/pyscat
 

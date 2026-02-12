@@ -6,7 +6,7 @@ from typing import Any
 
 import numpy as np
 
-from .function_evaluator import FunctionEvaluator
+from .function_evaluator import FunctionEvaluator, TooManyFailuresError
 
 __all__ = ["RefSet"]
 
@@ -165,6 +165,7 @@ class RefSet:
             for j in range(i + 1, self.dim):
                 # check proximity
                 # zero-division may occur here
+                n_failures = -1
                 with np.errstate(divide="ignore", invalid="ignore"):
                     while (
                         np.max(np.abs(normalize(x[i]) - normalize(x[j])))
@@ -173,6 +174,16 @@ class RefSet:
                         # too close. replace x_j.
                         x[j], self.fx[j] = self.evaluator.single_random()
                         self.sort()
+
+                        n_failures += 1
+                        if n_failures > self.evaluator.max_failures:
+                            # prevent infinite loop
+                            raise TooManyFailuresError(
+                                "Too many failures while trying to find a "
+                                "sufficiently different point. Consider "
+                                "increasing the proximity threshold or the "
+                                "maximum number of failures."
+                            )
 
     def update(self, i: int, x: np.ndarray, fx: float):
         """Update a RefSet entry."""

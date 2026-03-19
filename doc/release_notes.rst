@@ -42,6 +42,7 @@ An example of migrating from pyPESTO 0.5.7 to PyScat 0.0.1 is shown below:
 .. code-block:: python
 
     # Old pyPESTO 0.5.7 code
+    from pypesto import Problem
     from pypesto.optimize import SacessOptimizer
     from pypesto.optimize.ess import get_default_ess_options
 
@@ -63,6 +64,7 @@ An example of migrating from pyPESTO 0.5.7 to PyScat 0.0.1 is shown below:
 .. code-block:: python
 
     # New PyScat 0.0.1 code
+    from pypesto import Problem
     from pyscat import SacessOptimizer
 
     problem = Problem(...)  # define your problem here

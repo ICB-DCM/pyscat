@@ -11,6 +11,7 @@ jobs:
     strategy:
       matrix:
         python-version: ['3.11', '3.12', '3.13', '3.14']
+        pypesto-version: ['pypi', 'develop']
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
@@ -27,12 +28,13 @@ jobs:
               build-essential \
               coinor-libipopt1v5 coinor-libipopt-dev \
               gfortran lcov pkg-config python3-dev zlib1g-dev
-              if [ ! -f /usr/lib/x86_64-linux-gnu/liblapack.so ]; then
-                sudo ln -s /usr/lib/x86_64-linux-gnu/liblapack.so.3 /usr/lib/x86_64-linux-gnu/liblapack.so
-              fi
-              if [ ! -f /usr/lib/x86_64-linux-gnu/libblas.so ]; then
-                sudo ln -s /usr/lib/x86_64-linux-gnu/libblas.so.3 /usr/lib/x86_64-linux-gnu/libblas.so
-              fi
+
+            if [ ! -f /usr/lib/x86_64-linux-gnu/liblapack.so ]; then
+              sudo ln -s /usr/lib/x86_64-linux-gnu/liblapack.so.3 /usr/lib/x86_64-linux-gnu/liblapack.so
+            fi
+            if [ ! -f /usr/lib/x86_64-linux-gnu/libblas.so ]; then
+              sudo ln -s /usr/lib/x86_64-linux-gnu/libblas.so.3 /usr/lib/x86_64-linux-gnu/libblas.so
+            fi
 
 
       - name: Install dependencies
@@ -40,6 +42,11 @@ jobs:
             python -m pip install --upgrade pip
             python -m pip install --upgrade setuptools
             python -m pip install -e .[test]
+
+      - name: Install pypesto ${{ matrix.pypesto-version }}
+        if: matrix.pypesto-version == 'develop'
+        run: |
+            python -m pip install git+https://github.com/ICB-DCM/pyPESTO.git@develop#egg=pypesto
 
       - name: Run tests
         run: |

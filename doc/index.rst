@@ -12,4 +12,5 @@
    How-to <howto>
    API reference <api>
    Release notes <release_notes>
+   References <references>
    Development <development>

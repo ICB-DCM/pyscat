@@ -53,7 +53,7 @@ intersphinx_mapping = {
 typehints_document_rtype = True
 autodoc_typehints = "description"
 
-bibtex_bibfiles = ["references.bib"]
+bibtex_bibfiles = ["using_pyscat.bib", "references.bib"]
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output

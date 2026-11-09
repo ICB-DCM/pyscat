@@ -25,7 +25,7 @@ jobs:
             sudo apt-get update
             sudo apt-get install \
               build-essential \
-              coinor-libipopt1v5 coinor-libipopt-dev \
+              coinor-libipopt-dev \
               gfortran lcov pkg-config python3-dev zlib1g-dev
               if [ ! -f /usr/lib/x86_64-linux-gnu/liblapack.so ]; then
                 sudo ln -s /usr/lib/x86_64-linux-gnu/liblapack.so.3 /usr/lib/x86_64-linux-gnu/liblapack.so
